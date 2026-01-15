@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据采集监控 - 风控管理系统</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F',
+            info: '#1890FF',
+            dark: '#1D2129',
+            'light-dark': '#4E5969',
+            'ultra-light': '#F2F3F5'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .transition-smooth {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .pulse-animation {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50 transition-smooth">
+    <div class="container mx-auto px-4">
+      <div class="flex items-center justify-between h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center space-x-2">
+          <div class="text-primary text-2xl">
+            <i class="fa fa-shield"></i>
+          </div>
+          <h1 class="text-xl font-bold text-primary">风控管理系统</h1>
+        </div>
+        
+        <!-- 中间导航菜单 -->
+        <nav class="hidden md:flex space-x-8">
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">实时监控</a>
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">风险告警</a>
+          <a href="#" class="text-primary font-medium border-b-2 border-primary px-1 py-5 transition-smooth">数据采集</a>
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">事件分析</a>
+          <!-- <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">系统设置</a> -->
+        </nav>
+        
+        <!-- 右侧用户信息 -->
+        <div class="flex items-center space-x-4">
+          <div class="relative">
+            <button id="refreshIntervalBtn" class="flex items-center text-light-dark hover:text-primary transition-smooth">
+              <i class="fa fa-refresh mr-1"></i>
+              <!-- <span class="hidden md:inline">5秒</span> -->
+            </button>
+            <div id="refreshIntervalMenu" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="5">5秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="10">10秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="30">30秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="60">1分钟</a>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <button id="userMenuBtn" class="flex items-center space-x-2 focus:outline-none">
+              <img src="https://picsum.photos/id/1005/200/200" alt="用户头像" class="w-8 h-8 rounded-full object-cover border-2 border-primary">
+              <span class="hidden md:inline text-sm font-medium">张经理</span>
+              <i class="fa fa-angle-down text-light-dark"></i>
+            </button>
+            <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+                <i class="fa fa-user mr-2"></i>个人资料
+              </a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+                <i class="fa fa-cog mr-2"></i>账户设置
+              </a>
+              <div class="border-t border-gray-100 my-1"></div>
+              <a href="#" class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth">
+                <i class="fa fa-sign-out mr-2"></i>登出
+              </a>
+            </div>
+          </div>
+          
+          <!-- 移动端菜单按钮 -->
+          <button id="mobileMenuBtn" class="md:hidden text-light-dark hover:text-primary transition-smooth">
+            <i class="fa fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t border-gray-100">
+      <div class="px-4 py-3 space-y-3">
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">实时监控</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">风险事件</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">告警管理</a>
+        <a href="#" class="block text-primary font-medium py-2 transition-smooth">数据采集</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">模型配置</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">系统设置</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <!-- 页面标题和状态概览 -->
+    <div class="mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">数据采集监控</h2>
+          <p class="text-light-dark mt-1">监控数据源接入状态、采集进度和数据质量</p>
+        </div>
+        
+        <!-- 数据采集状态卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 md:mt-0">
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">数据源总数</div>
+            <div class="text-xl font-semibold mt-1">12</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">正常运行</div>
+            <div class="text-xl font-semibold text-success mt-1">9</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">异常数据源</div>
+            <div class="text-xl font-semibold text-danger mt-1">2</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">数据质量问题</div>
+            <div class="text-xl font-semibold text-warning mt-1">56</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 数据采集概览图表 -->
+    <!-- <section class="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white rounded-xl p-6 card-shadow">
+        <h3 class="text-lg font-semibold mb-4">数据源状态分布</h3>
+        <div class="h-64">
+          <canvas id="dataSourceStatusChart"></canvas>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 card-shadow">
+        <h3 class="text-lg font-semibold mb-4">数据采集趋势 (今日)</h3>
+        <div class="h-64">
+          <canvas id="dataCollectionTrendChart"></canvas>
+        </div>
+      </div>
+    </section> -->
+    
+    <!-- 数据源监控和采集进度 -->
+    <section class="mb-8">
+      <div class="bg-white rounded-xl card-shadow overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <h3 class="text-lg font-semibold mb-3 md:mb-0">数据源监控</h3>
+            <div class="flex flex-wrap gap-3">
+              <div class="relative">
+                <input type="text" placeholder="搜索数据源..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full md:w-64">
+                <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-light-dark"></i>
+              </div>
+              <select class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth">
+                <option value="all">全部状态</option>
+                <option value="normal">正常</option>
+                <option value="warning">警告</option>
+                <option value="error">异常</option>
+                <option value="stopped">已停止</option>
+              </select>
+              <button id="refreshDataBtn" class="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-smooth">
+                <i class="fa fa-refresh mr-2"></i>刷新
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 数据源列表 -->
+        <div class="divide-y divide-gray-200">
+          <!-- 数据源1：交易数据 -->
+          <div class="p-6 hover:bg-gray-50 transition-smooth">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+              <div class="flex items-start space-x-4">
+                <div class="bg-success/10 text-success p-3 rounded-lg mt-0.5">
+                  <i class="fa fa-exchange"></i>
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="font-medium text-lg">交易数据中心</h4>
+                    <span class="px-2 py-0.5 bg-success/10 text-success text-xs rounded-full">正常</span>
+                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full pulse-animation">采集进行中</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">
+                    <i class="fa fa-database mr-1"></i>
+                    连接: db-trade-01.internal <span class="mx-2">|</span>
+                    <i class="fa fa-clock-o mr-1"></i>
+                    最后同步: 2023-06-15 14:32:18
+                  </p>
+                  
+                  <!-- 数据质量问题提示 -->
+                  <div class="mt-3 flex items-center text-danger text-sm cursor-pointer quality-issues" data-source="trade">
+                    <i class="fa fa-exclamation-circle mr-1"></i>
+                    检测到 12 个数据质量问题 <i class="fa fa-angle-right ml-1"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="w-full md:w-1/3 mt-4 md:mt-0">
+                <div class="mb-1 flex justify-between items-center">
+                  <span class="text-sm text-light-dark">采集进度</span>
+                  <span class="text-sm font-medium">78%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-success h-2.5 rounded-full" style="width: 78%"></div>
+                </div>
+                <div class="mt-2 text-sm text-light-dark flex justify-between">
+                  <span>今日已采集: 148,562 条</span>
+                  <span>预计完成: 14:45</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 数据源2：用户行为数据 -->
+          <div class="p-6 hover:bg-gray-50 transition-smooth">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+              <div class="flex items-start space-x-4">
+                <div class="bg-success/10 text-success p-3 rounded-lg mt-0.5">
+                  <i class="fa fa-user"></i>
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="font-medium text-lg">用户行为分析平台</h4>
+                    <span class="px-2 py-0.5 bg-success/10 text-success text-xs rounded-full">正常</span>
+                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full pulse-animation">采集进行中</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">
+                    <i class="fa fa-cloud mr-1"></i>
+                    连接: api-user-behavior.vpc <span class="mx-2">|</span>
+                    <i class="fa fa-clock-o mr-1"></i>
+                    最后同步: 2023-06-15 14:31:56
+                  </p>
+                  
+                  <!-- 数据质量问题提示 -->
+                  <div class="mt-3 flex items-center text-warning text-sm cursor-pointer quality-issues" data-source="user">
+                    <i class="fa fa-exclamation-triangle mr-1"></i>
+                    检测到 5 个数据质量问题 <i class="fa fa-angle-right ml-1"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="w-full md:w-1/3 mt-4 md:mt-0">
+                <div class="mb-1 flex justify-between items-center">
+                  <span class="text-sm text-light-dark">采集进度</span>
+                  <span class="text-sm font-medium">45%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-success h-2.5 rounded-full" style="width: 45%"></div>
+                </div>
+                <div class="mt-2 text-sm text-light-dark flex justify-between">
+                  <span>今日已采集: 326,891 条</span>
+                  <span>预计完成: 15:30</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 数据源3：图像数据 -->
+          <div class="p-6 hover:bg-gray-50 transition-smooth">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+              <div class="flex items-start space-x-4">
+                <div class="bg-danger/10 text-danger p-3 rounded-lg mt-0.5">
+                  <i class="fa fa-picture-o"></i>
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="font-medium text-lg">图像存储服务</h4>
+                    <span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">异常</span>
+                    <span class="px-2 py-0.5 bg-gray-200 text-light-dark text-xs rounded-full">采集已停止</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">
+                    <i class="fa fa-server mr-1"></i>
+                    连接: img-storage-02 <span class="mx-2">|</span>
+                    <i class="fa fa-clock-o mr-1"></i>
+                    最后同步: 2023-06-15 13:15:08
+                  </p>
+                  
+                  <!-- 错误信息 -->
+                  <div class="mt-3 flex items-center text-danger text-sm">
+                    <i class="fa fa-times-circle mr-1"></i>
+                    错误: 连接超时，已尝试 5 次重连
+                  </div>
+                  
+                  <!-- 操作按钮 -->
+                  <div class="mt-3">
+                    <button class="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary/90 transition-smooth">
+                      <i class="fa fa-refresh mr-1"></i>重新连接
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="w-full md:w-1/3 mt-4 md:mt-0">
+                <div class="mb-1 flex justify-between items-center">
+                  <span class="text-sm text-light-dark">采集进度</span>
+                  <span class="text-sm font-medium text-danger">中断</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-danger h-2.5 rounded-full" style="width: 32%"></div>
+                </div>
+                <div class="mt-2 text-sm text-light-dark flex justify-between">
+                  <span>今日已采集: 8,452 条</span>
+                  <span>上次失败: 13:20</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 数据源4：设备指纹数据 -->
+          <div class="p-6 hover:bg-gray-50 transition-smooth">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+              <div class="flex items-start space-x-4">
+                <div class="bg-success/10 text-success p-3 rounded-lg mt-0.5">
+                  <i class="fa fa-mobile"></i>
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="font-medium text-lg">设备指纹系统</h4>
+                    <span class="px-2 py-0.5 bg-success/10 text-success text-xs rounded-full">正常</span>
+                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full pulse-animation">采集进行中</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">
+                    <i class="fa fa-plug mr-1"></i>
+                    连接: device-fingerprint-service <span class="mx-2">|</span>
+                    <i class="fa fa-clock-o mr-1"></i>
+                    最后同步: 2023-06-15 14:33:02
+                  </p>
+                  
+                  <!-- 数据质量问题提示 -->
+                  <div class="mt-3 flex items-center text-light-dark text-sm cursor-pointer quality-issues" data-source="device">
+                    <i class="fa fa-check-circle mr-1 text-success"></i>
+                    未检测到数据质量问题
+                  </div>
+                </div>
+              </div>
+              
+              <div class="w-full md:w-1/3 mt-4 md:mt-0">
+                <div class="mb-1 flex justify-between items-center">
+                  <span class="text-sm text-light-dark">采集进度</span>
+                  <span class="text-sm font-medium">92%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-success h-2.5 rounded-full" style="width: 92%"></div>
+                </div>
+                <div class="mt-2 text-sm text-light-dark flex justify-between">
+                  <span>今日已采集: 67,321 条</span>
+                  <span>预计完成: 14:40</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 数据源5：第三方信用数据 -->
+          <div class="p-6 hover:bg-gray-50 transition-smooth">
+            <div class="flex flex-col md:flex-row md:items-start justify-between">
+              <div class="flex items-start space-x-4">
+                <div class="bg-warning/10 text-warning p-3 rounded-lg mt-0.5">
+                  <i class="fa fa-credit-card"></i>
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="font-medium text-lg">第三方信用评估接口</h4>
+                    <span class="px-2 py-0.5 bg-warning/10 text-warning text-xs rounded-full">警告</span>
+                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full pulse-animation">采集进行中</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">
+                    <i class="fa fa-link mr-1"></i>
+                    连接: api.thirdparty-credit.com <span class="mx-2">|</span>
+                    <i class="fa fa-clock-o mr-1"></i>
+                    最后同步: 2023-06-15 14:28:45
+                  </p>
+                  
+                  <!-- 数据质量问题提示 -->
+                  <div class="mt-3 flex items-center text-danger text-sm cursor-pointer quality-issues" data-source="credit">
+                    <i class="fa fa-exclamation-circle mr-1"></i>
+                    检测到 39 个数据质量问题 <i class="fa fa-angle-right ml-1"></i>
+                  </div>
+                  
+                  <!-- 警告信息 -->
+                  <div class="mt-2 flex items-center text-warning text-sm">
+                    <i class="fa fa-exclamation-triangle mr-1"></i>
+                    API响应延迟较高，已超过阈值 2.5 秒
+                  </div>
+                </div>
+              </div>
+              
+              <div class="w-full md:w-1/3 mt-4 md:mt-0">
+                <div class="mb-1 flex justify-between items-center">
+                  <span class="text-sm text-light-dark">采集进度</span>
+                  <span class="text-sm font-medium">23%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-warning h-2.5 rounded-full" style="width: 23%"></div>
+                </div>
+                <div class="mt-2 text-sm text-light-dark flex justify-between">
+                  <span>今日已采集: 12,456 条</span>
+                  <span>预计完成: 16:10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 分页 -->
+        <div class="p-6 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="text-sm text-light-dark">
+            显示 1-5 条，共 12 条
+          </div>
+          <div class="flex space-x-1">
+            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 text-light-dark hover:border-primary hover:text-primary transition-smooth disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <i class="fa fa-angle-left"></i>
+            </button>
+            <button class="w-9 h-9 flex items-center justify-center rounded-md bg-primary text-white">1</button>
+            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">2</button>
+            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">3</button>
+            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 text-light-dark hover:border-primary hover:text-primary transition-smooth">
+              <i class="fa fa-angle-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 数据预览和质量检查 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- 数据预览 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">数据样本预览</h3>
+        </div>
+        
+        <div class="p-6">
+          <div class="mb-4 flex flex-wrap gap-2">
+            <button class="px-3 py-1 text-sm bg-primary text-white rounded-md hover:bg-primary/90 transition-smooth" data-preview="trade">交易数据</button>
+            <button class="px-3 py-1 text-sm bg-gray-100 text-light-dark rounded-md hover:bg-gray-200 transition-smooth" data-preview="user">用户行为</button>
+            <button class="px-3 py-1 text-sm bg-gray-100 text-light-dark rounded-md hover:bg-gray-200 transition-smooth" data-preview="image">图像数据</button>
+            <button class="px-3 py-1 text-sm bg-gray-100 text-light-dark rounded-md hover:bg-gray-200 transition-smooth" data-preview="device">设备数据</button>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">交易ID</th>
+                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">用户ID</th>
+                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">金额</th>
+                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">时间</th>
+                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">状态</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">TX2023061500123</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">USER789456</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">¥2,560.00</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:32:15</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-success/10 text-success text-xs rounded-full">成功</span></td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">TX2023061500122</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">USER123789</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">¥1,280.00</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:31:58</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-success/10 text-success text-xs rounded-full">成功</span></td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">TX2023061500121</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">USER456123</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">¥5,690.00</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:31:42</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-warning/10 text-warning text-xs rounded-full">处理中</span></td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">TX2023061500120</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">USER321654</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">¥890.00</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:31:25</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">失败</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="mt-4 text-sm text-light-dark text-center">
+            显示最新 4 条数据 | <a href="#" class="text-primary hover:underline">查看更多</a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 数据质量检查 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">数据质量问题汇总</h3>
+        </div>
+        
+        <div class="p-6">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-3 bg-danger/5 rounded-lg border border-danger/20">
+              <div class="flex items-center">
+                <div class="bg-danger/10 text-danger p-2 rounded-full mr-3">
+                  <i class="fa fa-times-circle"></i>
+                </div>
+                <div>
+                  <div class="font-medium">缺失关键字段</div>
+                  <div class="text-sm text-light-dark">用户行为数据中缺少地理位置信息</div>
+                </div>
+              </div>
+              <div class="text-danger font-medium">32 条记录</div>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-danger/5 rounded-lg border border-danger/20">
+              <div class="flex items-center">
+                <div class="bg-danger/10 text-danger p-2 rounded-full mr-3">
+                  <i class="fa fa-exclamation-circle"></i>
+                </div>
+                <div>
+                  <div class="font-medium">格式错误</div>
+                  <div class="text-sm text-light-dark">第三方信用数据中日期格式不符合规范</div>
+                </div>
+              </div>
+              <div class="text-danger font-medium">24 条记录</div>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-warning/5 rounded-lg border border-warning/20">
+              <div class="flex items-center">
+                <div class="bg-warning/10 text-warning p-2 rounded-full mr-3">
+                  <i class="fa fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                  <div class="font-medium">值异常</div>
+                  <div class="text-sm text-light-dark">交易金额超出正常范围（>10万元）</div>
+                </div>
+              </div>
+              <div class="text-warning font-medium">8 条记录</div>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-warning/5 rounded-lg border border-warning/20">
+              <div class="flex items-center">
+                <div class="bg-warning/10 text-warning p-2 rounded-full mr-3">
+                  <i class="fa fa-question-circle"></i>
+                </div>
+                <div>
+                  <div class="font-medium">数据不一致</div>
+                  <div class="text-sm text-light-dark">用户信息与历史记录不匹配</div>
+                </div>
+              </div>
+              <div class="text-warning font-medium">5 条记录</div>
+            </div>
+          </div>
+          
+          <div class="mt-6 pt-4 border-t border-gray-200">
+            <div class="flex justify-between items-center mb-3">
+              <h4 class="font-medium">数据质量评分</h4>
+              <span class="text-xl font-bold text-warning">82/100</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+              <div class="bg-warning h-2.5 rounded-full" style="width: 82%"></div>
+            </div>
+            <div class="mt-2 text-sm text-light-dark">
+              <i class="fa fa-info-circle mr-1 text-info"></i>
+              数据质量评分基于完整性、准确性、一致性和及时性四个维度
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-gray-200 py-6 mt-8">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-light-dark text-sm mb-4 md:mb-0">
+          © 2023 风控管理系统 版权所有
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">使用帮助</a>
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">隐私政策</a>
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">联系我们</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 数据质量问题详情模态框 -->
+  <div id="qualityIssuesModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <!-- 模态框头部 -->
+      <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-xl font-bold" id="qualityModalTitle">数据质量问题 - 交易数据中心</h3>
+        <button id="closeQualityModal" class="text-light-dark hover:text-dark transition-smooth">
+          <i class="fa fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <!-- 模态框内容 -->
+      <div class="flex-grow overflow-y-auto p-6">
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-3">问题统计</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div class="text-light-dark text-sm">缺失值</div>
+              <div class="text-xl font-semibold text-danger mt-1">8</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div class="text-light-dark text-sm">格式错误</div>
+              <div class="text-xl font-semibold text-danger mt-1">3</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div class="text-light-dark text-sm">值异常</div>
+              <div class="text-xl font-semibold text-warning mt-1">1</div>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h4 class="text-lg font-semibold mb-3">详细问题列表</h4>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr class="bg-gray-50">
+                  <th class="px-4 py-3 text-left text-xs font-medium text-light-dark uppercase tracking-wider">记录ID</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-light-dark uppercase tracking-wider">问题类型</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-light-dark uppercase tracking-wider">字段</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-light-dark uppercase tracking-wider">描述</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-light-dark uppercase tracking-wider">时间</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">REC-87654</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">缺失值</span></td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">交易地点</td>
+                  <td class="px-4 py-3 text-sm">交易记录中缺少交易地点信息</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:28:15</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">REC-87651</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">缺失值</span></td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">支付方式</td>
+                  <td class="px-4 py-3 text-sm">交易记录中缺少支付方式信息</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:27:42</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">REC-87645</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">格式错误</span></td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">交易时间</td>
+                  <td class="px-4 py-3 text-sm">时间格式不符合ISO标准，应为YYYY-MM-DD HH:MM:SS</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:26:18</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">REC-87632</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 py-0.5 bg-warning/10 text-warning text-xs rounded-full">值异常</span></td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">交易金额</td>
+                  <td class="px-4 py-3 text-sm">交易金额为负数，不符合业务规则</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">14:25:03</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="mt-4 text-sm text-light-dark text-center">
+            显示前 4 条问题 | <a href="#" class="text-primary hover:underline">查看全部 12 条</a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 模态框底部 -->
+      <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+        <button id="exportQualityIssues" class="px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth">
+          <i class="fa fa-download mr-2"></i>导出问题列表
+        </button>
+        <button id="closeQualityBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-smooth">
+          关闭
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据更新提示 -->
+  <div id="updateToast" class="fixed bottom-6 right-6 bg-primary text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-500 flex items-center">
+    <i class="fa fa-refresh mr-2"></i>
+    <span>数据已更新</span>
+  </div>
+
+  <script>
+    // 初始化数据源状态分布图表
+    const initDataSourceStatusChart = () => {
+      const ctx = document.getElementById('dataSourceStatusChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['正常', '警告', '异常', '已停止'],
+          datasets: [{
+            data: [9, 1, 1, 1],
+            backgroundColor: [
+              '#52C41A',
+              '#FAAD14',
+              '#FF4D4F',
+              '#4E5969'
+            ],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          }
+        }
+      });
+    };
+    
+    // 初始化数据采集趋势图表
+    const initDataCollectionTrendChart = () => {
+      const ctx = document.getElementById('dataCollectionTrendChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
+          datasets: [
+            {
+              label: '交易数据',
+              data: [15000, 32000, 45000, 68000, 89000, 105000, 148000, 148562],
+              borderColor: '#165DFF',
+              backgroundColor: 'rgba(22, 93, 255, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: '用户行为',
+              data: [25000, 68000, 125000, 189000, 235000, 278000, 310000, 326891],
+              borderColor: '#36CFC9',
+              backgroundColor: 'rgba(54, 207, 201, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: '设备数据',
+              data: [5000, 12000, 22000, 35000, 45000, 52000, 61000, 67321],
+              borderColor: '#FAAD14',
+              backgroundColor: 'rgba(250, 173, 20, 0.1)',
+              tension: 0.4,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 12,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                callback: function(value) {
+                  if (value >= 1000) {
+                    return value / 1000 + 'k';
+                  }
+                  return value;
+                }
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          }
+        }
+      });
+    };
+    
+    // 数据质量问题模态框
+    const setupQualityIssuesModal = () => {
+      const modal = document.getElementById('qualityIssuesModal');
+      const openButtons = document.querySelectorAll('.quality-issues');
+      const closeButtons = [
+        document.getElementById('closeQualityModal'),
+        document.getElementById('closeQualityBtn')
+      ];
+      const modalTitle = document.getElementById('qualityModalTitle');
+      const exportBtn = document.getElementById('exportQualityIssues');
+      
+      // 打开模态框
+      openButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const sourceName = button.closest('div').querySelector('h4').textContent;
+          modalTitle.textContent = `数据质量问题 - ${sourceName}`;
+          modal.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        });
+      });
+      
+      // 关闭模态框
+      const closeModal = () => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      };
+      
+      closeButtons.forEach(button => {
+        button.addEventListener('click', closeModal);
+      });
+      
+      // 点击模态框外部关闭
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      });
+      
+      // 导出按钮
+      exportBtn.addEventListener('click', () => {
+        showToast('数据质量问题列表已导出为CSV文件');
+      });
+    };
+    
+    // 数据预览切换
+    const setupDataPreview = () => {
+      const previewButtons = document.querySelectorAll('[data-preview]');
+      
+      previewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          // 更新按钮状态
+          previewButtons.forEach(btn => {
+            btn.classList.remove('bg-primary', 'text-white');
+            btn.classList.add('bg-gray-100', 'text-light-dark');
+          });
+          this.classList.remove('bg-gray-100', 'text-light-dark');
+          this.classList.add('bg-primary', 'text-white');
+          
+          // 在实际应用中，这里会根据选择加载不同类型的数据预览
+          const previewType = this.getAttribute('data-preview');
+          showToast(`已切换到${this.textContent}预览`);
+        });
+      });
+    };
+    
+    // 其他共用功能
+    const setupCommonFunctions = () => {
+      // 用户菜单功能
+      const userMenuBtn = document.getElementById('userMenuBtn');
+      const userMenu = document.getElementById('userMenu');
+      
+      userMenuBtn.addEventListener('click', () => {
+        userMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('refreshIntervalMenu').classList.add('hidden');
+        document.getElementById('mobileMenu').classList.add('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+          userMenu.classList.add('hidden');
+        }
+      });
+      
+      // 刷新间隔菜单
+      const refreshBtn = document.getElementById('refreshIntervalBtn');
+      const refreshMenu = document.getElementById('refreshIntervalMenu');
+      const intervalOptions = refreshMenu.querySelectorAll('a');
+      const intervalDisplay = refreshBtn.querySelector('span');
+      
+      let currentInterval = 5; // 默认5秒，数据采集页面刷新频率更高
+      
+      refreshBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        refreshMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('mobileMenu').classList.add('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!refreshBtn.contains(e.target) && !refreshMenu.contains(e.target)) {
+          refreshMenu.classList.add('hidden');
+        }
+      });
+      
+      // 选择刷新间隔
+      intervalOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentInterval = option.getAttribute('data-interval');
+          intervalDisplay.textContent = currentInterval === '60' ? '1分钟' : `${currentInterval}秒`;
+          refreshMenu.classList.add('hidden');
+          
+          // 更新自动刷新计时器
+          setupAutoRefresh(currentInterval);
+        });
+      });
+      
+      // 移动端菜单
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('refreshIntervalMenu').classList.add('hidden');
+      });
+      
+      // 手动刷新按钮
+      document.getElementById('refreshDataBtn').addEventListener('click', () => {
+        simulateDataRefresh();
+      });
+    };
+    
+    // 模拟数据采集进度更新
+    let progressIntervals = [];
+    const simulateProgressUpdates = () => {
+      // 为每个进度条设置随机增长
+      const progressBars = document.querySelectorAll('.bg-success, .bg-warning, .bg-danger');
+      
+      progressBars.forEach(bar => {
+        const interval = setInterval(() => {
+          const currentWidth = parseInt(bar.style.width);
+          const parentWidth = bar.parentElement.offsetWidth;
+          const percentage = Math.round((currentWidth / parentWidth) * 100);
+          
+          // 随机增加1-3个百分点，直到达到100%
+          if (percentage < 100) {
+            const newPercentage = Math.min(percentage + Math.floor(Math.random() * 3) + 1, 100);
+            bar.style.width = `${newPercentage}%`;
+            
+            // 更新显示的百分比
+            const percentageDisplay = bar.parentElement.parentElement.querySelector('.font-medium');
+            if (percentageDisplay && !percentageDisplay.textContent.includes('中断')) {
+              percentageDisplay.textContent = `${newPercentage}%`;
+            }
+          } else {
+            clearInterval(interval);
+          }
+        }, 3000);
+        
+        progressIntervals.push(interval);
+      });
+    };
+    
+    // 自动刷新功能
+    let refreshTimer;
+    const setupAutoRefresh = (intervalSeconds) => {
+      // 清除现有计时器
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+      }
+      
+      // 清除进度更新计时器
+      progressIntervals.forEach(interval => clearInterval(interval));
+      progressIntervals = [];
+      
+      // 设置新计时器
+      refreshTimer = setInterval(() => {
+        // 模拟数据刷新
+        simulateDataRefresh();
+        // 模拟进度更新
+        simulateProgressUpdates();
+      }, intervalSeconds * 1000);
+    };
+    
+    // 模拟数据刷新
+    const simulateDataRefresh = () => {
+      // 这里可以添加实际的数据刷新逻辑
+      console.log('数据已刷新');
+      
+      // 显示更新提示
+      showToast('数据已更新');
+    };
+    
+    // 显示提示消息
+    const showToast = (message, type = 'success') => {
+      const toast = document.getElementById('updateToast');
+      const icon = toast.querySelector('i');
+      
+      // 设置提示类型样式
+      if (type === 'warning') {
+        toast.classList.remove('bg-primary');
+        toast.classList.add('bg-warning');
+        icon.className = 'fa fa-exclamation-circle mr-2';
+      } else {
+        toast.classList.remove('bg-warning');
+        toast.classList.add('bg-primary');
+        icon.className = 'fa fa-refresh mr-2';
+      }
+      
+      toast.querySelector('span').textContent = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      
+      // 3秒后隐藏提示
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    };
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      initDataSourceStatusChart();
+      initDataCollectionTrendChart();
+      setupQualityIssuesModal();
+      setupDataPreview();
+      setupCommonFunctions();
+      
+      // 启动自动刷新和进度更新
+      setupAutoRefresh(5);
+      simulateProgressUpdates();
+    });
+  </script>
+</body>
+</html>

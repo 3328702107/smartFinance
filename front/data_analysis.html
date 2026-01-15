@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>风险事件分析 - 风控管理系统</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <!-- 引入vis.js用于关系图展示 -->
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F',
+            info: '#1890FF',
+            dark: '#1D2129',
+            'light-dark': '#4E5969',
+            'ultra-light': '#F2F3F5'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .transition-smooth {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .timeline-line {
+        @apply absolute left-3 top-6 bottom-0 w-0.5 bg-gray-200;
+      }
+      .node-hover {
+        transition: all 0.2s ease;
+      }
+      .node-hover:hover {
+        transform: scale(1.05);
+        filter: brightness(1.1);
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50 transition-smooth">
+    <div class="container mx-auto px-4">
+      <div class="flex items-center justify-between h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center space-x-2">
+          <div class="text-primary text-2xl">
+            <i class="fa fa-shield"></i>
+          </div>
+          <h1 class="text-xl font-bold text-primary">风控管理系统</h1>
+        </div>
+        
+        <!-- 中间导航菜单 -->
+        <nav class="hidden md:flex space-x-8">
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">实时监控</a>
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">风险告警</a>
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">数据采集</a>
+          <a href="#" class="text-primary font-medium border-b-2 border-primary px-1 py-5 transition-smooth">事件分析</a>
+
+        </nav>
+        
+        <!-- 右侧用户信息 -->
+        <div class="flex items-center space-x-4">
+          <div class="relative">
+            <button id="refreshIntervalBtn" class="flex items-center text-light-dark hover:text-primary transition-smooth">
+              <i class="fa fa-refresh mr-1"></i>
+              <span class="hidden md:inline">30秒</span>
+            </button>
+            <div id="refreshIntervalMenu" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="5">5秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="10">10秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="30">30秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="60">1分钟</a>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <button id="userMenuBtn" class="flex items-center space-x-2 focus:outline-none">
+              <img src="https://picsum.photos/id/1005/200/200" alt="用户头像" class="w-8 h-8 rounded-full object-cover border-2 border-primary">
+              <span class="hidden md:inline text-sm font-medium">张经理</span>
+              <i class="fa fa-angle-down text-light-dark"></i>
+            </button>
+            <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+                <i class="fa fa-user mr-2"></i>个人资料
+              </a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+                <i class="fa fa-cog mr-2"></i>账户设置
+              </a>
+              <div class="border-t border-gray-100 my-1"></div>
+              <a href="#" class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth">
+                <i class="fa fa-sign-out mr-2"></i>登出
+              </a>
+            </div>
+          </div>
+          
+          <!-- 移动端菜单按钮 -->
+          <button id="mobileMenuBtn" class="md:hidden text-light-dark hover:text-primary transition-smooth">
+            <i class="fa fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t border-gray-100">
+      <div class="px-4 py-3 space-y-3">
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">实时监控</a>
+        <a href="#" class="block text-primary font-medium py-2 transition-smooth">风险事件</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">告警管理</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">数据采集</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">模型配置</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">系统设置</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <!-- 事件标题和基本信息 -->
+    <div class="mb-6">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+        <div>
+          <div class="flex flex-wrap items-center gap-3 mb-2">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">疑似账户盗用事件分析</h2>
+            <span class="px-3 py-1 bg-danger/10 text-danger text-sm rounded-full font-medium">高风险</span>
+            <span class="px-3 py-1 bg-warning/10 text-warning text-sm rounded-full font-medium">待处理</span>
+          </div>
+          <p class="text-light-dark mb-4">事件ID: <span class="font-medium">EVT-20230615-001</span> | 检测时间: <span class="font-medium">2023-06-15 10:24:35</span></p>
+          
+          <div class="flex flex-wrap gap-3">
+            <button class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-smooth text-sm">
+              <i class="fa fa-edit mr-2"></i>编辑事件
+            </button>
+            <button class="inline-flex items-center px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-smooth text-sm">
+              <i class="fa fa-check mr-2"></i>标记为已处理
+            </button>
+            <button class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+              <i class="fa fa-history mr-2"></i>查看历史
+            </button>
+            <button class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+              <i class="fa fa-download mr-2"></i>导出报告
+            </button>
+          </div>
+        </div>
+        
+        <!-- 事件关键指标 -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
+          <div class="bg-white rounded-lg p-4 card-shadow">
+            <div class="text-light-dark text-sm">风险评分</div>
+            <div class="text-2xl font-semibold text-danger mt-1">92<span class="text-sm font-normal text-light-dark ml-1">/100</span></div>
+          </div>
+          <div class="bg-white rounded-lg p-4 card-shadow">
+            <div class="text-light-dark text-sm">关联账户</div>
+            <div class="text-2xl font-semibold mt-1">3</div>
+          </div>
+          <div class="bg-white rounded-lg p-4 card-shadow">
+            <div class="text-light-dark text-sm">关联设备</div>
+            <div class="text-2xl font-semibold mt-1">2</div>
+          </div>
+          <div class="bg-white rounded-lg p-4 card-shadow">
+            <div class="text-light-dark text-sm">影响范围</div>
+            <div class="text-2xl font-semibold mt-1">中</div>
+          </div>
+          <div class="bg-white rounded-lg p-4 card-shadow">
+            <div class="text-light-dark text-sm">处理优先级</div>
+            <div class="text-2xl font-semibold text-danger mt-1">高</div>
+          </div>
+          <div class="bg-white rounded-lg p-4 card-shadow">
+            <div class="text-light-dark text-sm">持续时间</div>
+            <div class="text-2xl font-semibold mt-1">2h 15m</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 溯源路径分析 -->
+    <section class="mb-8">
+      <div class="bg-white rounded-xl card-shadow overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">事件溯源路径</h3>
+          <p class="text-sm text-light-dark mt-1">风险事件的完整发展路径和时间线</p>
+        </div>
+        
+        <div class="p-6">
+          <!-- 溯源关系图 -->
+          <!-- <div class="h-[400px] mb-6 border border-gray-200 rounded-lg" id="traceGraph"></div> -->
+            <!-- 关系图将通过vis.js渲染 -->
+          
+          
+          <!-- 详细时间线 -->
+          <h4 class="font-medium text-lg mb-4">事件时间线</h4>
+          <div class="relative">
+            <!-- 时间线垂直线 -->
+            <div class="timeline-line"></div>
+            
+            <!-- 时间线节点1 -->
+            <div class="relative pl-10 pb-8">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center z-10">
+                <i class="fa fa-user text-white text-xs"></i>
+              </div>
+              <div class="font-medium">正常登录</div>
+              <div class="text-sm text-light-dark mt-1">用户在常用设备（iPhone 13）上登录账户，地点：上海</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-14 20:15:32</div>
+            </div>
+            
+            <!-- 时间线节点2 -->
+            <div class="relative pl-10 pb-8">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center z-10">
+                <i class="fa fa-sign-out text-light-dark text-xs"></i>
+              </div>
+              <div class="font-medium">用户登出</div>
+              <div class="text-sm text-light-dark mt-1">用户主动登出账户</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-14 22:30:15</div>
+            </div>
+            
+            <!-- 时间线节点3 -->
+            <div class="relative pl-10 pb-8">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-warning flex items-center justify-center z-10">
+                <i class="fa fa-user-secret text-white text-xs"></i>
+              </div>
+              <div class="font-medium">异常登录尝试</div>
+              <div class="text-sm text-light-dark mt-1">新设备（Windows 10）尝试登录，IP地址：185.173.89.xxx，地点：俄罗斯莫斯科</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-15 10:20:18</div>
+            </div>
+            
+            <!-- 时间线节点4 -->
+            <div class="relative pl-10 pb-8">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-warning flex items-center justify-center z-10">
+                <i class="fa fa-key text-white text-xs"></i>
+              </div>
+              <div class="font-medium">密码重置请求</div>
+              <div class="text-sm text-light-dark mt-1">来自同一IP地址的密码重置请求，通过短信验证码验证</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-15 10:22:47</div>
+            </div>
+            
+            <!-- 时间线节点5 -->
+            <div class="relative pl-10 pb-8">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-danger flex items-center justify-center z-10">
+                <i class="fa fa-check-circle text-white text-xs"></i>
+              </div>
+              <div class="font-medium">异常登录成功</div>
+              <div class="text-sm text-light-dark mt-1">使用新密码在新设备上登录成功</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-15 10:24:12</div>
+            </div>
+            
+            <!-- 时间线节点6 -->
+            <div class="relative pl-10 pb-8">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-danger flex items-center justify-center z-10">
+                <i class="fa fa-exclamation-triangle text-white text-xs"></i>
+              </div>
+              <div class="font-medium">风险事件触发</div>
+              <div class="text-sm text-light-dark mt-1">系统检测到异地异常登录行为，触发高风险告警</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-15 10:24:35</div>
+            </div>
+            
+            <!-- 时间线节点7 -->
+            <div class="relative pl-10">
+              <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-danger flex items-center justify-center z-10">
+                <i class="fa fa-exchange text-white text-xs"></i>
+              </div>
+              <div class="font-medium">异常资金转移</div>
+              <div class="text-sm text-light-dark mt-1">登录后尝试向陌生账户转移资金 50,000元</div>
+              <div class="text-xs text-light-dark mt-2">2023-06-15 10:30:22</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 关联数据分析 -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- 关联账户 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden lg:col-span-1">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">关联账户信息</h3>
+          <p class="text-sm text-light-dark mt-1">与该风险事件相关的账户</p>
+        </div>
+        
+        <div class="p-6">
+          <!-- 主要账户 -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <div class="flex items-start">
+              <img src="https://picsum.photos/id/1012/200/200" alt="用户头像" class="w-12 h-12 rounded-full object-cover mr-4">
+              <div>
+                <div class="flex items-center">
+                  <h4 class="font-medium">王小明</h4>
+                  <span class="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">受害者</span>
+                </div>
+                <p class="text-sm text-light-dark mt-1">USER-789456</p>
+                <div class="grid grid-cols-2 gap-2 mt-3 text-sm">
+                  <div>
+                    <span class="text-light-dark">注册时间:</span>
+                    <span class="block">2022-03-15</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">账户等级:</span>
+                    <span class="block">VIP会员</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">联系电话:</span>
+                    <span class="block">138****5678</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">邮箱:</span>
+                    <span class="block">wang***@example.com</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 关联账户1 -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <div class="flex items-start">
+              <img src="https://picsum.photos/id/1025/200/200" alt="用户头像" class="w-12 h-12 rounded-full object-cover mr-4">
+              <div>
+                <div class="flex items-center">
+                  <h4 class="font-medium">李**</h4>
+                  <span class="ml-2 px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">收款账户</span>
+                </div>
+                <p class="text-sm text-light-dark mt-1">USER-123456</p>
+                <div class="grid grid-cols-2 gap-2 mt-3 text-sm">
+                  <div>
+                    <span class="text-light-dark">注册时间:</span>
+                    <span class="block">2023-05-20</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">账户状态:</span>
+                    <span class="block text-warning">已冻结</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">交易次数:</span>
+                    <span class="block">12次</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">风险评分:</span>
+                    <span class="block text-danger">85分</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 关联账户2 -->
+          <div>
+            <div class="flex items-start">
+              <img src="https://picsum.photos/id/1074/200/200" alt="用户头像" class="w-12 h-12 rounded-full object-cover mr-4">
+              <div>
+                <div class="flex items-center">
+                  <h4 class="font-medium">张**</h4>
+                  <span class="ml-2 px-2 py-0.5 bg-warning/10 text-warning text-xs rounded-full">可疑关联</span>
+                </div>
+                <p class="text-sm text-light-dark mt-1">USER-654321</p>
+                <div class="grid grid-cols-2 gap-2 mt-3 text-sm">
+                  <div>
+                    <span class="text-light-dark">注册时间:</span>
+                    <span class="block">2023-01-05</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">账户状态:</span>
+                    <span class="block">正常</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">与受害者关系:</span>
+                    <span class="block">无明显关系</span>
+                  </div>
+                  <div>
+                    <span class="text-light-dark">风险评分:</span>
+                    <span class="block text-warning">62分</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <button class="w-full mt-6 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+            查看所有关联账户 <i class="fa fa-angle-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 关联设备和IP -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden lg:col-span-1">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">设备与网络信息</h3>
+          <p class="text-sm text-light-dark mt-1">相关设备和网络连接信息</p>
+        </div>
+        
+        <div class="p-6">
+          <!-- 常用设备 -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <h4 class="font-medium mb-3 flex items-center">
+              <i class="fa fa-mobile text-success mr-2"></i>常用设备
+            </h4>
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">设备名称</span>
+                <span class="text-sm">iPhone 13</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">操作系统</span>
+                <span class="text-sm">iOS 16.5</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">浏览器</span>
+                <span class="text-sm">Safari 16.5</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">常用IP</span>
+                <span class="text-sm">101.89.xxx.xxx</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-light-dark">常用地点</span>
+                <span class="text-sm">中国 上海</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 异常设备 -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <h4 class="font-medium mb-3 flex items-center">
+              <i class="fa fa-desktop text-danger mr-2"></i>异常设备
+            </h4>
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">设备名称</span>
+                <span class="text-sm">未知Windows设备</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">操作系统</span>
+                <span class="text-sm">Windows 10</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">浏览器</span>
+                <span class="text-sm">Chrome 112.0.5615.138</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-light-dark">登录IP</span>
+                <span class="text-sm">185.173.89.xxx</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-light-dark">登录地点</span>
+                <span class="text-sm">俄罗斯 莫斯科</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- IP地址分析 -->
+          <div>
+            <h4 class="font-medium mb-3 flex items-center">
+              <i class="fa fa-globe text-info mr-2"></i>IP地址分析
+            </h4>
+            <div class="space-y-4">
+              <div>
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-light-dark">185.173.89.xxx</span>
+                  <span class="text-danger">高风险</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-danger h-2 rounded-full" style="width: 92%"></div>
+                </div>
+                <div class="text-xs text-light-dark mt-1">
+                  历史记录: 3次可疑登录 | 归属地: 俄罗斯 莫斯科
+                </div>
+              </div>
+              
+              <div>
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-light-dark">101.89.xxx.xxx</span>
+                  <span class="text-success">低风险</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-success h-2 rounded-full" style="width: 15%"></div>
+                </div>
+                <div class="text-xs text-light-dark mt-1">
+                  历史记录: 128次正常登录 | 归属地: 中国 上海
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 交易记录 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden lg:col-span-1">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">关联交易记录</h3>
+          <p class="text-sm text-light-dark mt-1">相关账户的交易流水</p>
+        </div>
+        
+        <div class="p-6">
+          <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+            <!-- 异常交易 -->
+            <div class="border border-danger/20 bg-danger/5 p-4 rounded-lg">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="font-medium">资金转出</div>
+                  <div class="text-sm text-light-dark mt-1">向账户 李** 转账</div>
+                </div>
+                <span class="text-danger font-medium">-¥50,000.00</span>
+              </div>
+              <div class="flex flex-wrap justify-between gap-2 mt-3 text-xs text-light-dark">
+                <span>交易ID: TX2023061501234</span>
+                <span>状态: <span class="text-warning">处理中</span></span>
+                <span>时间: 2023-06-15 10:30:22</span>
+              </div>
+              <div class="mt-2 text-xs bg-danger/10 text-danger px-2 py-1 rounded inline-block">
+                可疑交易 - 已拦截
+              </div>
+            </div>
+            
+            <!-- 正常交易1 -->
+            <div class="border border-gray-200 p-4 rounded-lg">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="font-medium">资金转入</div>
+                  <div class="text-sm text-light-dark mt-1">来自账户 公司工资账户</div>
+                </div>
+                <span class="text-success font-medium">+¥18,500.00</span>
+              </div>
+              <div class="flex flex-wrap justify-between gap-2 mt-3 text-xs text-light-dark">
+                <span>交易ID: TX2023061008765</span>
+                <span>状态: <span class="text-success">成功</span></span>
+                <span>时间: 2023-06-10 09:30:00</span>
+              </div>
+            </div>
+            
+            <!-- 正常交易2 -->
+            <div class="border border-gray-200 p-4 rounded-lg">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="font-medium">消费</div>
+                  <div class="text-sm text-light-dark mt-1">在线购物 - 电子产品</div>
+                </div>
+                <span class="text-danger font-medium">-¥3,299.00</span>
+              </div>
+              <div class="flex flex-wrap justify-between gap-2 mt-3 text-xs text-light-dark">
+                <span>交易ID: TX2023060805432</span>
+                <span>状态: <span class="text-success">成功</span></span>
+                <span>时间: 2023-06-08 15:42:18</span>
+              </div>
+            </div>
+            
+            <!-- 正常交易3 -->
+            <div class="border border-gray-200 p-4 rounded-lg">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="font-medium">资金转出</div>
+                  <div class="text-sm text-light-dark mt-1">向账户 王** 转账（亲属）</div>
+                </div>
+                <span class="text-danger font-medium">-¥10,000.00</span>
+              </div>
+              <div class="flex flex-wrap justify-between gap-2 mt-3 text-xs text-light-dark">
+                <span>交易ID: TX2023060509876</span>
+                <span>状态: <span class="text-success">成功</span></span>
+                <span>时间: 2023-06-05 11:20:55</span>
+              </div>
+            </div>
+          </div>
+          
+          <button class="w-full mt-6 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+            查看完整交易记录 <i class="fa fa-angle-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 责任追溯和风险分析 -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- 责任追溯 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden lg:col-span-2">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">责任追溯</h3>
+          <p class="text-sm text-light-dark mt-1">事件相关责任主体和影响范围</p>
+        </div>
+        
+        <div class="p-6">
+          <!-- <div class="h-[300px]" id="responsibilityGraph"></div> -->
+            <!-- 责任追溯图将通过vis.js渲染 -->
+          
+          <div class="mt-6">
+            <h4 class="font-medium mb-3">责任分析</h4>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-start">
+                <div class="bg-danger/10 text-danger p-1 rounded-full mt-0.5 mr-3">
+                  <i class="fa fa-user"></i>
+                </div>
+                <div>
+                  <div class="font-medium">主要责任主体</div>
+                  <div class="text-light-dark mt-1">疑似黑客攻击，通过非法手段获取用户信息并进行登录操作</div>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <div class="bg-warning/10 text-warning p-1 rounded-full mt-0.5 mr-3">
+                  <i class="fa fa-user-circle"></i>
+                </div>
+                <div>
+                  <div class="font-medium">用户责任</div>
+                  <div class="text-light-dark mt-1">可能在其他平台使用相同密码，导致信息泄露；未开启二次验证</div>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <div class="bg-info/10 text-info p-1 rounded-full mt-0.5 mr-3">
+                  <i class="fa fa-shield"></i>
+                </div>
+                <div>
+                  <div class="font-medium">系统防护</div>
+                  <div class="text-light-dark mt-1">异地登录检测及时，但密码重置流程可进一步加强安全验证</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 风险分析和建议 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden lg:col-span-3">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">风险分析与处理建议</h3>
+          <p class="text-sm text-light-dark mt-1">基于事件分析的风险评估和处理方案</p>
+        </div>
+        
+        <div class="p-6">
+          <div class="mb-6">
+            <h4 class="font-medium mb-3">风险评估</h4>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <p class="text-sm mb-4">该事件属于典型的账户盗用案例，攻击者通过未知手段获取了用户的基本信息，并成功重置密码登录账户。从攻击路径来看，攻击者可能利用了用户在其他平台的信息泄露，使用相同的用户名和密码尝试登录。事件风险等级高，已造成潜在的资金损失风险。</p>
+              
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <div class="text-light-dark text-xs mb-1">账户安全风险</div>
+                  <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div class="bg-danger h-2 rounded-full" style="width: 95%"></div>
+                  </div>
+                  <div class="text-xs text-danger">极高</div>
+                </div>
+                <div>
+                  <div class="text-light-dark text-xs mb-1">资金损失风险</div>
+                  <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div class="bg-danger h-2 rounded-full" style="width: 85%"></div>
+                  </div>
+                  <div class="text-xs text-danger">高</div>
+                </div>
+                <div>
+                  <div class="text-light-dark text-xs mb-1">信息泄露风险</div>
+                  <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div class="bg-warning h-2 rounded-full" style="width: 65%"></div>
+                  </div>
+                  <div class="text-xs text-warning">中</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-6">
+            <h4 class="font-medium mb-3">处理建议</h4>
+            <div class="space-y-3">
+              <div class="flex items-start">
+                <div class="bg-primary/10 text-primary p-1 rounded-full mt-0.5 mr-3 flex-shrink-0">
+                  <span class="text-sm font-medium">1</span>
+                </div>
+                <div>
+                  <div class="font-medium">立即冻结账户</div>
+                  <div class="text-sm text-light-dark mt-1">暂时冻结账户所有操作权限，防止进一步损失</div>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <div class="bg-primary/10 text-primary p-1 rounded-full mt-0.5 mr-3 flex-shrink-0">
+                  <span class="text-sm font-medium">2</span>
+                </div>
+                <div>
+                  <div class="font-medium">联系用户核实</div>
+                  <div class="text-sm text-light-dark mt-1">通过注册手机和邮箱联系用户，确认是否为本人操作</div>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <div class="bg-primary/10 text-primary p-1 rounded-full mt-0.5 mr-3 flex-shrink-0">
+                  <span class="text-sm font-medium">3</span>
+                </div>
+                <div>
+                  <div class="font-medium">强制密码重置</div>
+                  <div class="text-sm text-light-dark mt-1">引导用户进行安全的密码重置，并建议开启二次验证</div>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <div class="bg-primary/10 text-primary p-1 rounded-full mt-0.5 mr-3 flex-shrink-0">
+                  <span class="text-sm font-medium">4</span>
+                </div>
+                <div>
+                  <div class="font-medium">调查收款账户</div>
+                  <div class="text-sm text-light-dark mt-1">对李**账户进行风险评估，必要时冻结并上报可疑交易</div>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <div class="bg-primary/10 text-primary p-1 rounded-full mt-0.5 mr-3 flex-shrink-0">
+                  <span class="text-sm font-medium">5</span>
+                </div>
+                <div>
+                  <div class="font-medium">加强异常检测</div>
+                  <div class="text-sm text-light-dark mt-1">针对此类攻击模式优化风控模型，加强密码重置环节的安全验证</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="font-medium mb-3">处理记录</h4>
+            <div class="space-y-4 max-h-[150px] overflow-y-auto pr-2">
+              <div class="flex items-start">
+                <img src="https://picsum.photos/id/1005/200/200" alt="处理人头像" class="w-8 h-8 rounded-full object-cover mr-3 flex-shrink-0">
+                <div>
+                  <div class="flex items-center">
+                    <span class="font-medium text-sm">系统自动处理</span>
+                    <span class="ml-2 text-xs text-light-dark">2023-06-15 10:25:10</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">检测到高风险事件，已自动拦截资金转移操作</p>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <img src="https://picsum.photos/id/1010/200/200" alt="处理人头像" class="w-8 h-8 rounded-full object-cover mr-3 flex-shrink-0">
+                <div>
+                  <div class="flex items-center">
+                    <span class="font-medium text-sm">张经理</span>
+                    <span class="ml-2 text-xs text-light-dark">2023-06-15 10:35:42</span>
+                  </div>
+                  <p class="text-sm text-light-dark mt-1">已冻结用户账户和可疑收款账户，正在联系用户核实情况</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mt-4">
+              <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth resize-none text-sm" placeholder="添加处理记录..."></textarea>
+              <div class="flex justify-end mt-2">
+                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-smooth text-sm">
+                  保存记录
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-gray-200 py-6 mt-8">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-light-dark text-sm mb-4 md:mb-0">
+          © 2023 风控管理系统 版权所有
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">使用帮助</a>
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">隐私政策</a>
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">联系我们</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 数据更新提示 -->
+  <div id="updateToast" class="fixed bottom-6 right-6 bg-primary text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-500 flex items-center">
+    <i class="fa fa-refresh mr-2"></i>
+    <span>数据已更新</span>
+  </div>
+
+  <script>
+    // 初始化溯源路径关系图
+    const initTraceGraph = () => {
+      const container = document.getElementById('traceGraph');
+      
+      // 节点数据
+      const nodes = [
+        { id: 1, label: '正常登录', group: 1, shape: 'box', title: '2023-06-14 20:15:32 - 上海 - iPhone 13' },
+        { id: 2, label: '用户登出', group: 1, shape: 'box', title: '2023-06-14 22:30:15' },
+        { id: 3, label: '异常登录尝试', group: 2, shape: 'box', title: '2023-06-15 10:20:18 - 莫斯科 - Windows设备' },
+        { id: 4, label: '密码重置', group: 2, shape: 'box', title: '2023-06-15 10:22:47' },
+        { id: 5, label: '异常登录成功', group: 3, shape: 'box', title: '2023-06-15 10:24:12' },
+        { id: 6, label: '风险事件触发', group: 3, shape: 'box', title: '2023-06-15 10:24:35' },
+        { id: 7, label: '异常资金转移', group: 3, shape: 'box', title: '2023-06-15 10:30:22 - 金额: ¥50,000' },
+        { id: 8, label: '王小明', group: 4, shape: 'circularImage', image: 'https://picsum.photos/id/1012/200/200', title: '用户ID: USER-789456' },
+        { id: 9, label: '李**', group: 5, shape: 'circularImage', image: 'https://picsum.photos/id/1025/200/200', title: '收款账户: USER-123456' },
+        { id: 10, label: '俄罗斯IP', group: 6, shape: 'diamond', title: '185.173.89.xxx' },
+        { id: 11, label: '上海IP', group: 7, shape: 'diamond', title: '101.89.xxx.xxx' }
+      ];
+      
+      // 连接关系数据
+      const edges = [
+        { from: 8, to: 1, arrows: 'to' },
+        { from: 1, to: 2, arrows: 'to' },
+        { from: 10, to: 3, arrows: 'to' },
+        { from: 3, to: 4, arrows: 'to' },
+        { from: 4, to: 5, arrows: 'to' },
+        { from: 5, to: 6, arrows: 'to' },
+        { from: 5, to: 7, arrows: 'to' },
+        { from: 7, to: 9, arrows: 'to' },
+        { from: 11, to: 1, arrows: 'to' },
+        { from: 8, to: 11, arrows: 'to' }
+      ];
+      
+      // 节点样式
+      const groups = {
+        1: { color: { background: '#e8f3ff', border: '#165DFF' }, font: { color: '#165DFF' } },
+        2: { color: { background: '#fff7e6', border: '#FAAD14' }, font: { color: '#FAAD14' } },
+        3: { color: { background: '#ffe8e8', border: '#FF4D4F' }, font: { color: '#FF4D4F' } },
+        4: { color: { background: '#fff', border: '#165DFF' } },
+        5: { color: { background: '#fff', border: '#FF4D4F' } },
+        6: { color: { background: '#ffe8e8', border: '#FF4D4F' }, font: { color: '#FF4D4F' } },
+        7: { color: { background: '#e8f3ff', border: '#165DFF' }, font: { color: '#165DFF' } }
+      };
+      
+      // 配置项
+      const options = {
+        nodes: {
+          size: 30,
+          font: {
+            size: 12,
+            face: 'Inter'
+          },
+          borderWidth: 2,
+          shapeProperties: {
+            useBorderWithImage: true
+          }
+        },
+        edges: {
+          width: 2,
+          color: { inherit: 'from' },
+          smooth: {
+            type: 'cubicBezier',
+            tension: 0.4
+          }
+        },
+        groups: groups,
+        interaction: {
+          hover: true,
+          tooltipDelay: 200,
+          zoomView: true
+        },
+        layout: {
+          hierarchical: {
+            direction: 'LR',
+            sortMethod: 'directed'
+          }
+        },
+        physics: {
+          hierarchicalRepulsion: {
+            nodeDistance: 120
+          },
+          minVelocity: 0.75,
+          solver: 'hierarchicalRepulsion'
+        }
+      };
+      
+      // 创建网络关系图
+      const network = new vis.Network(container, { nodes, edges }, options);
+      
+      // 节点点击事件
+      network.on('click', function(params) {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          const node = nodes.find(n => n.id === parseInt(nodeId));
+          if (node && node.title) {
+            // 在实际应用中，这里可以显示更详细的节点信息
+            console.log('节点详情:', node.title);
+          }
+        }
+      });
+    };
+    
+    // 初始化责任追溯关系图
+    const initResponsibilityGraph = () => {
+      const container = document.getElementById('responsibilityGraph');
+      
+      // 节点数据
+      const nodes = [
+        { id: 1, label: '黑客攻击', group: 1, shape: 'box', size: 35 },
+        { id: 2, label: '用户操作', group: 2, shape: 'box', size: 35 },
+        { id: 3, label: '系统防护', group: 3, shape: 'box', size: 35 },
+        { id: 4, label: '账户盗用', group: 4, shape: 'diamond', size: 40 },
+        { id: 5, label: '资金损失', group: 5, shape: 'diamond', size: 40 },
+        { id: 6, label: '信息泄露', group: 6, shape: 'diamond', size: 40 }
+      ];
+      
+      // 连接关系数据
+      const edges = [
+        { from: 1, to: 4, arrows: 'to', value: 5 },
+        { from: 2, to: 6, arrows: 'to', value: 3 },
+        { from: 6, to: 4, arrows: 'to', value: 4 },
+        { from: 3, to: 4, arrows: 'from', value: 2, label: '不足' },
+        { from: 4, to: 5, arrows: 'to', value: 5 }
+      ];
+      
+      // 节点样式
+      const groups = {
+        1: { color: { background: '#ffe8e8', border: '#FF4D4F' }, font: { color: '#FF4D4F' } },
+        2: { color: { background: '#fff7e6', border: '#FAAD14' }, font: { color: '#FAAD14' } },
+        3: { color: { background: '#e8f3ff', border: '#165DFF' }, font: { color: '#165DFF' } },
+        4: { color: { background: '#ffe8e8', border: '#FF4D4F' }, font: { color: '#FF4D4F' } },
+        5: { color: { background: '#ffe8e8', border: '#FF4D4F' }, font: { color: '#FF4D4F' } },
+        6: { color: { background: '#fff7e6', border: '#FAAD14' }, font: { color: '#FAAD14' } }
+      };
+      
+      // 配置项
+      const options = {
+        nodes: {
+          font: {
+            size: 12,
+            face: 'Inter'
+          },
+          borderWidth: 2
+        },
+        edges: {
+          width: 2,
+          color: { color: '#999' },
+          font: {
+            size: 10
+          },
+          smooth: {
+            type: 'cubicBezier',
+            tension: 0.4
+          }
+        },
+        groups: groups,
+        interaction: {
+          hover: true,
+          tooltipDelay: 200,
+          zoomView: true
+        },
+        physics: {
+          forceAtlas2Based: {
+            gravitationalConstant: -200,
+            centralGravity: 0.1,
+            springLength: 100,
+            springConstant: 0.08
+          },
+          maxVelocity: 150,
+          solver: 'forceAtlas2Based',
+          timestep: 0.35,
+          stabilization: {
+            iterations: 150
+          }
+        }
+      };
+      
+      // 创建网络关系图
+      const network = new vis.Network(container, { nodes, edges }, options);
+    };
+    
+    // 其他共用功能
+    const setupCommonFunctions = () => {
+      // 用户菜单功能
+      const userMenuBtn = document.getElementById('userMenuBtn');
+      const userMenu = document.getElementById('userMenu');
+      
+      userMenuBtn.addEventListener('click', () => {
+        userMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('refreshIntervalMenu').classList.add('hidden');
+        document.getElementById('mobileMenu').classList.add('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+          userMenu.classList.add('hidden');
+        }
+      });
+      
+      // 刷新间隔菜单
+      const refreshBtn = document.getElementById('refreshIntervalBtn');
+      const refreshMenu = document.getElementById('refreshIntervalMenu');
+      const intervalOptions = refreshMenu.querySelectorAll('a');
+      const intervalDisplay = refreshBtn.querySelector('span');
+      
+      let currentInterval = 30; // 默认30秒
+      
+      refreshBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        refreshMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('mobileMenu').classList.add('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!refreshBtn.contains(e.target) && !refreshMenu.contains(e.target)) {
+          refreshMenu.classList.add('hidden');
+        }
+      });
+      
+      // 选择刷新间隔
+      intervalOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentInterval = option.getAttribute('data-interval');
+          intervalDisplay.textContent = currentInterval === '60' ? '1分钟' : `${currentInterval}秒`;
+          refreshMenu.classList.add('hidden');
+          
+          // 更新自动刷新计时器
+          setupAutoRefresh(currentInterval);
+        });
+      });
+      
+      // 移动端菜单
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('refreshIntervalMenu').classList.add('hidden');
+      });
+    };
+    
+    // 自动刷新功能
+    let refreshTimer;
+    const setupAutoRefresh = (intervalSeconds) => {
+      // 清除现有计时器
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+      }
+      
+      // 设置新计时器
+      refreshTimer = setInterval(() => {
+        // 模拟数据刷新
+        simulateDataRefresh();
+      }, intervalSeconds * 1000);
+    };
+    
+    // 模拟数据刷新
+    const simulateDataRefresh = () => {
+      // 这里可以添加实际的数据刷新逻辑
+      console.log('数据已更新');
+      
+      // 显示更新提示
+      showToast('数据已更新');
+    };
+    
+    // 显示提示消息
+    const showToast = (message, type = 'success') => {
+      const toast = document.getElementById('updateToast');
+      const icon = toast.querySelector('i');
+      
+      // 设置提示类型样式
+      if (type === 'warning') {
+        toast.classList.remove('bg-primary');
+        toast.classList.add('bg-warning');
+        icon.className = 'fa fa-exclamation-circle mr-2';
+      } else {
+        toast.classList.remove('bg-warning');
+        toast.classList.add('bg-primary');
+        icon.className = 'fa fa-refresh mr-2';
+      }
+      
+      toast.querySelector('span').textContent = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      
+      // 3秒后隐藏提示
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    };
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 等待vis.js加载完成后初始化图表
+      setTimeout(() => {
+        initTraceGraph();
+        initResponsibilityGraph();
+      }, 500);
+      
+      setupCommonFunctions();
+      
+      // 默认设置30秒自动刷新
+      setupAutoRefresh(30);
+    });
+  </script>
+</body>
+</html>

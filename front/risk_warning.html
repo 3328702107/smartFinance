@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>风险告警管理 - 风控管理系统</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F',
+            info: '#1890FF',
+            dark: '#1D2129',
+            'light-dark': '#4E5969',
+            'ultra-light': '#F2F3F5'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .transition-smooth {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .table-hover-row:hover {
+        background-color: rgba(22, 93, 255, 0.03);
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50 transition-smooth">
+    <div class="container mx-auto px-4">
+      <div class="flex items-center justify-between h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center space-x-2">
+          <div class="text-primary text-2xl">
+            <i class="fa fa-shield"></i>
+          </div>
+          <h1 class="text-xl font-bold text-primary">风控管理系统</h1>
+        </div>
+        
+        <!-- 中间导航菜单 -->
+        <nav class="hidden md:flex space-x-8">
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">实时监控</a>
+          <!-- <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth"></a> -->
+          <a href="#" class="text-primary font-medium border-b-2 border-primary px-1 py-5 transition-smooth">风险告警</a>
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">数据采集</a>
+          <a href="#" class="text-light-dark hover:text-primary px-1 py-5 transition-smooth">事件分析</a>
+        </nav>
+        
+        <!-- 右侧用户信息 -->
+        <div class="flex items-center space-x-4">
+          <div class="relative">
+            <button id="refreshIntervalBtn" class="flex items-center text-light-dark hover:text-primary transition-smooth">
+              <i class="fa fa-refresh mr-1"></i>
+              <!-- <span class="hidden md:inline">10秒</span> -->
+            </button>
+            <div id="refreshIntervalMenu" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="5">5秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="10">10秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="30">30秒</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="60">1分钟</a>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <button id="userMenuBtn" class="flex items-center space-x-2 focus:outline-none">
+              <img src="https://picsum.photos/id/1005/200/200" alt="用户头像" class="w-8 h-8 rounded-full object-cover border-2 border-primary">
+              <span class="hidden md:inline text-sm font-medium">张经理</span>
+              <i class="fa fa-angle-down text-light-dark"></i>
+            </button>
+            <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+                <i class="fa fa-user mr-2"></i>个人资料
+              </a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+                <i class="fa fa-cog mr-2"></i>账户设置
+              </a>
+              <div class="border-t border-gray-100 my-1"></div>
+              <a href="#" class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth">
+                <i class="fa fa-sign-out mr-2"></i>登出
+              </a>
+            </div>
+          </div>
+          
+          <!-- 移动端菜单按钮 -->
+          <button id="mobileMenuBtn" class="md:hidden text-light-dark hover:text-primary transition-smooth">
+            <i class="fa fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t border-gray-100">
+      <div class="px-4 py-3 space-y-3">
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">实时监控</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">风险事件</a>
+        <a href="#" class="block text-primary font-medium py-2 transition-smooth">告警管理</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">模型配置</a>
+        <a href="#" class="block text-light-dark hover:text-primary py-2 transition-smooth">系统设置</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <!-- 页面标题和统计信息 -->
+    <div class="mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">风险告警管理</h2>
+          <p class="text-light-dark mt-1">跟踪和处理系统生成的各类风险告警</p>
+        </div>
+        
+        <!-- 告警统计卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 md:mt-0">
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">总告警数</div>
+            <div class="text-xl font-semibold mt-1">147</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">待处理</div>
+            <div class="text-xl font-semibold text-warning mt-1">36</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">已解决</div>
+            <div class="text-xl font-semibold text-success mt-1">98</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">高风险</div>
+            <div class="text-xl font-semibold text-danger mt-1">13</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 告警分布图表 -->
+    <section class="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-xl p-6 card-shadow lg:col-span-1">
+        <h3 class="text-lg font-semibold mb-4">告警级别分布</h3>
+        <div class="h-64">
+          <canvas id="alertLevelChart"></canvas>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 card-shadow lg:col-span-2">
+        <h3 class="text-lg font-semibold mb-4">告警类型趋势</h3>
+        <div class="h-64">
+          <canvas id="alertTypeChart"></canvas>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 筛选工具栏 -->
+    <section class="mb-6 bg-white rounded-xl p-4 card-shadow">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex flex-wrap gap-3">
+          <!-- 事件类型筛选 -->
+          <div>
+            <label class="block text-sm text-light-dark mb-1">事件类型</label>
+            <select id="eventTypeFilter" class="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full md:w-48">
+              <option value="all">全部类型</option>
+              <option value="account">账户风险</option>
+              <option value="transaction">交易风险</option>
+              <option value="identity">身份验证</option>
+              <option value="device">设备异常</option>
+              <option value="behavior">行为异常</option>
+            </select>
+          </div>
+          
+          <!-- 告警级别筛选 -->
+          <div>
+            <label class="block text-sm text-light-dark mb-1">告警级别</label>
+            <select id="alertLevelFilter" class="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full md:w-36">
+              <option value="all">全部级别</option>
+              <option value="high">高</option>
+              <option value="medium">中</option>
+              <option value="low">低</option>
+            </select>
+          </div>
+          
+          <!-- 状态筛选 -->
+          <div>
+            <label class="block text-sm text-light-dark mb-1">处理状态</label>
+            <select id="statusFilter" class="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full md:w-36">
+              <option value="all">全部状态</option>
+              <option value="pending">待处理</option>
+              <option value="processing">处理中</option>
+              <option value="resolved">已解决</option>
+              <option value="ignored">已忽略</option>
+            </select>
+          </div>
+          
+          <!-- 时间筛选 -->
+          <div>
+            <label class="block text-sm text-light-dark mb-1">时间范围</label>
+            <select id="timeFilter" class="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full md:w-40">
+              <option value="today">今日</option>
+              <option value="yesterday">昨日</option>
+              <option value="7days">近7天</option>
+              <option value="30days">近30天</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-3">
+          <!-- 搜索框 -->
+          <div class="relative">
+            <input type="text" placeholder="搜索告警ID/关键词..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full md:w-64">
+            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-light-dark"></i>
+          </div>
+          
+          <!-- 批量操作 -->
+          <div class="relative">
+            <button id="batchOperationBtn" class="flex items-center justify-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:border-primary hover:text-primary transition-smooth">
+              <i class="fa fa-cog mr-2"></i>批量操作
+            </button>
+            <div id="batchOperationMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-action="resolve">批量标记为已解决</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-action="ignore">批量标记为已忽略</a>
+              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-action="process">批量标记为处理中</a>
+              <div class="border-t border-gray-100 my-1"></div>
+              <a href="#" class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth" data-action="delete">批量删除</a>
+            </div>
+          </div>
+          
+          <!-- 刷新按钮 -->
+          <button id="refreshBtn" class="flex items-center justify-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:border-primary hover:text-primary transition-smooth">
+            <i class="fa fa-refresh mr-2"></i>刷新
+          </button>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 告警列表 -->
+    <section class="bg-white rounded-xl card-shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider w-12">
+                <input type="checkbox" id="selectAll" class="rounded text-primary focus:ring-primary">
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider">告警ID</th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider">事件类型</th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider">告警级别</th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider">触发时间</th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider">状态</th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-light-dark uppercase tracking-wider">处理人</th>
+              <th class="px-6 py-4 text-right text-xs font-medium text-light-dark uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <!-- 告警项1 - 高风险 -->
+            <tr class="table-hover-row cursor-pointer alert-item" data-id="ALERT-20230615-001">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" class="alert-select rounded text-primary focus:ring-primary">
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap font-medium">ALERT-20230615-001</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span>账户盗用风险</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-danger/10 text-danger">高</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">2023-06-15 10:24:35</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <select class="status-select border-none bg-transparent text-warning font-medium focus:outline-none focus:ring-0">
+                  <option value="pending" selected>待处理</option>
+                  <option value="processing">处理中</option>
+                  <option value="resolved">已解决</option>
+                  <option value="ignored">已忽略</option>
+                </select>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">-</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button class="text-primary hover:text-primary/80 mr-3 view-details">查看</button>
+                <button class="text-light-dark hover:text-dark more-actions">
+                  <i class="fa fa-ellipsis-v"></i>
+                </button>
+              </td>
+            </tr>
+            
+            <!-- 告警项2 - 中风险 -->
+            <tr class="table-hover-row cursor-pointer alert-item" data-id="ALERT-20230615-002">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" class="alert-select rounded text-primary focus:ring-primary">
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap font-medium">ALERT-20230615-002</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span>异常交易</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-warning/10 text-warning">中</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">2023-06-15 09:15:22</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <select class="status-select border-none bg-transparent text-warning font-medium focus:outline-none focus:ring-0">
+                  <option value="pending" selected>待处理</option>
+                  <option value="processing">处理中</option>
+                  <option value="resolved">已解决</option>
+                  <option value="ignored">已忽略</option>
+                </select>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">-</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button class="text-primary hover:text-primary/80 mr-3 view-details">查看</button>
+                <button class="text-light-dark hover:text-dark more-actions">
+                  <i class="fa fa-ellipsis-v"></i>
+                </button>
+              </td>
+            </tr>
+            
+            <!-- 告警项3 - 低风险 -->
+            <tr class="table-hover-row cursor-pointer alert-item" data-id="ALERT-20230615-003">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" class="alert-select rounded text-primary focus:ring-primary">
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap font-medium">ALERT-20230615-003</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span>证件伪造嫌疑</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-info/10 text-info">低</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">2023-06-15 08:42:17</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <select class="status-select border-none bg-transparent text-success font-medium focus:outline-none focus:ring-0">
+                  <option value="pending">待处理</option>
+                  <option value="processing">处理中</option>
+                  <option value="resolved" selected>已解决</option>
+                  <option value="ignored">已忽略</option>
+                </select>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">李审核</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button class="text-primary hover:text-primary/80 mr-3 view-details">查看</button>
+                <button class="text-light-dark hover:text-dark more-actions">
+                  <i class="fa fa-ellipsis-v"></i>
+                </button>
+              </td>
+            </tr>
+            
+            <!-- 告警项4 - 高风险 -->
+            <tr class="table-hover-row cursor-pointer alert-item" data-id="ALERT-20230615-004">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" class="alert-select rounded text-primary focus:ring-primary">
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap font-medium">ALERT-20230615-004</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span>批量恶意注册</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-danger/10 text-danger">高</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">2023-06-15 07:36:51</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <select class="status-select border-none bg-transparent text-warning font-medium focus:outline-none focus:ring-0">
+                  <option value="pending">待处理</option>
+                  <option value="processing" selected>处理中</option>
+                  <option value="resolved">已解决</option>
+                  <option value="ignored">已忽略</option>
+                </select>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">王风控</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button class="text-primary hover:text-primary/80 mr-3 view-details">查看</button>
+                <button class="text-light-dark hover:text-dark more-actions">
+                  <i class="fa fa-ellipsis-v"></i>
+                </button>
+              </td>
+            </tr>
+            
+            <!-- 告警项5 - 中风险 -->
+            <tr class="table-hover-row cursor-pointer alert-item" data-id="ALERT-20230614-056">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" class="alert-select rounded text-primary focus:ring-primary">
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap font-medium">ALERT-20230614-056</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span>设备异常登录</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-warning/10 text-warning">中</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">2023-06-14 22:18:44</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <select class="status-select border-none bg-transparent text-light-dark font-medium focus:outline-none focus:ring-0">
+                  <option value="pending">待处理</option>
+                  <option value="processing">处理中</option>
+                  <option value="resolved">已解决</option>
+                  <option value="ignored" selected>已忽略</option>
+                </select>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-light-dark">张经理</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button class="text-primary hover:text-primary/80 mr-3 view-details">查看</button>
+                <button class="text-light-dark hover:text-dark more-actions">
+                  <i class="fa fa-ellipsis-v"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- 分页 -->
+      <div class="p-6 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="text-sm text-light-dark">
+          显示 1-5 条，共 147 条
+        </div>
+        <div class="flex space-x-1">
+          <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 text-light-dark hover:border-primary hover:text-primary transition-smooth disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <i class="fa fa-angle-left"></i>
+          </button>
+          <button class="w-9 h-9 flex items-center justify-center rounded-md bg-primary text-white">1</button>
+          <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">2</button>
+          <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">3</button>
+          <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">4</button>
+          <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">5</button>
+          <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 text-light-dark hover:border-primary hover:text-primary transition-smooth">
+            <i class="fa fa-angle-right"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-gray-200 py-6 mt-8">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-light-dark text-sm mb-4 md:mb-0">
+          © 2023 风控管理系统 版权所有
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">使用帮助</a>
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">隐私政策</a>
+          <a href="#" class="text-light-dark hover:text-primary transition-smooth text-sm">联系我们</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 告警详情模态框 -->
+  <div id="alertDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <!-- 模态框头部 -->
+      <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-xl font-bold" id="modalTitle">告警详情 - ALERT-20230615-001</h3>
+        <button id="closeModal" class="text-light-dark hover:text-dark transition-smooth">
+          <i class="fa fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <!-- 模态框内容 -->
+      <div class="flex-grow overflow-y-auto p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <h4 class="text-lg font-semibold mb-4 pb-2 border-b border-gray-200">基本信息</h4>
+            <div class="space-y-3 text-sm">
+              <div class="flex justify-between">
+                <span class="text-light-dark">告警ID:</span>
+                <span id="modalAlertId">ALERT-20230615-001</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">事件类型:</span>
+                <span id="modalEventType">账户盗用风险</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">告警级别:</span>
+                <span id="modalAlertLevel"><span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">高</span></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">触发时间:</span>
+                <span id="modalTriggerTime">2023-06-15 10:24:35</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">当前状态:</span>
+                <span id="modalStatus"><span class="px-2 py-0.5 bg-warning/10 text-warning text-xs rounded-full">待处理</span></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">触发规则:</span>
+                <span id="modalRule">异地异常登录检测规则 v2.3</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">风险评分:</span>
+                <span id="modalRiskScore" class="font-medium text-danger">92分</span>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="text-lg font-semibold mb-4 pb-2 border-b border-gray-200">用户信息</h4>
+            <div class="space-y-3 text-sm">
+              <div class="flex justify-between">
+                <span class="text-light-dark">用户ID:</span>
+                <span id="modalUserId">USER-789456</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">用户名:</span>
+                <span id="modalUsername">wangxiaoming</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">注册时间:</span>
+                <span id="modalRegTime">2022-03-15</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">账户等级:</span>
+                <span id="modalUserLevel">VIP会员</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">联系电话:</span>
+                <span id="modalPhone">138****5678</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-light-dark">最近登录:</span>
+                <span id="modalLastLogin">2023-06-14 20:15:32 (上海)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-4 pb-2 border-b border-gray-200">事件详情</h4>
+          <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+            <p class="text-sm mb-3" id="modalEventDesc">该用户账户在异地IP地址登录，与常用登录地差异较大，且登录设备为新设备。登录IP地址为185.173.89.xxx，地理位置显示为俄罗斯莫斯科，而用户常用登录地为中国上海。</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+              <div>
+                <h5 class="font-medium mb-2">异常登录信息</h5>
+                <div class="space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">IP地址:</span>
+                    <span id="modalIp">185.173.89.xxx</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">登录地点:</span>
+                    <span id="modalLocation">俄罗斯 莫斯科</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">登录设备:</span>
+                    <span id="modalDevice">Windows 10 / Chrome 112.0.5615.138</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">登录方式:</span>
+                    <span id="modalLoginMethod">密码登录</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h5 class="font-medium mb-2">历史正常登录模式</h5>
+                <div class="space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">常用IP段:</span>
+                    <span id="modalCommonIp">101.89.*.* / 116.23.*.*</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">常用地点:</span>
+                    <span id="modalCommonLocation">中国 上海</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">常用设备:</span>
+                    <span id="modalCommonDevice">iPhone 13 / Safari</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-light-dark">常用时段:</span>
+                    <span id="modalCommonTime">19:00 - 22:00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-4 pb-2 border-b border-gray-200">检测结果与建议</h4>
+          <div class="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+            <h5 class="font-medium mb-2">风险评估</h5>
+            <p class="text-sm mb-4" id="modalRiskAssessment">该用户账户在异地IP地址登录，与常用登录地差异较大，且登录设备为新设备。历史上该用户无类似异常行为记录，存在账户盗用风险，建议立即采取验证措施。</p>
+            
+            <h5 class="font-medium mb-2">处理建议</h5>
+            <ul class="text-sm list-disc pl-5 space-y-1 mb-4" id="modalSuggestions">
+              <li>向用户注册手机发送验证码，要求二次验证</li>
+              <li>暂时冻结账户敏感操作权限</li>
+              <li>联系用户确认是否为本人操作</li>
+              <li>如确认非本人操作，立即锁定账户并引导用户修改密码</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div>
+          <h4 class="text-lg font-semibold mb-4 pb-2 border-b border-gray-200">处理记录</h4>
+          <div id="modalProcessingRecords" class="space-y-4">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center">
+                  <span class="text-xs font-medium px-2 py-0.5 bg-gray-200 text-light-dark rounded-full">系统创建</span>
+                  <span class="ml-2 text-sm font-medium">系统自动生成告警</span>
+                </div>
+                <span class="text-xs text-light-dark">2023-06-15 10:24:35</span>
+              </div>
+              <p class="text-sm text-light-dark">系统检测到异常登录行为，自动创建高风险告警</p>
+            </div>
+          </div>
+          
+          <!-- 处理记录输入框 -->
+          <div class="mt-4">
+            <textarea id="processingNote" rows="3" class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth resize-none" placeholder="请输入处理记录..."></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 模态框底部 -->
+      <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+        <button id="ignoreAlert" class="px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth">
+          忽略
+        </button>
+        <button id="furtherInvestigate" class="px-4 py-2 border border-warning text-warning rounded-lg hover:bg-warning/5 transition-smooth">
+          进一步调查
+        </button>
+        <button id="markAsResolved" class="px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-smooth">
+          标记为已处理
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据更新提示 -->
+  <div id="updateToast" class="fixed bottom-6 right-6 bg-primary text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-500 flex items-center">
+    <i class="fa fa-refresh mr-2"></i>
+    <span>数据已更新</span>
+  </div>
+
+  <script>
+    // 初始化告警级别分布图表
+    const initAlertLevelChart = () => {
+      const ctx = document.getElementById('alertLevelChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['高风险', '中风险', '低风险'],
+          datasets: [{
+            data: [13, 56, 78],
+            backgroundColor: [
+              '#FF4D4F',
+              '#FAAD14',
+              '#1890FF'
+            ],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          },
+          cutout: '70%'
+        }
+      });
+    };
+    
+    // 初始化告警类型趋势图表
+    const initAlertTypeChart = () => {
+      const ctx = document.getElementById('alertTypeChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['6/10', '6/11', '6/12', '6/13', '6/14', '6/15'],
+          datasets: [
+            {
+              label: '账户风险',
+              data: [8, 12, 9, 15, 11, 7],
+              backgroundColor: '#165DFF'
+            },
+            {
+              label: '交易风险',
+              data: [15, 18, 12, 20, 17, 9],
+              backgroundColor: '#36CFC9'
+            },
+            {
+              label: '身份验证',
+              data: [5, 7, 9, 6, 8, 4],
+              backgroundColor: '#FAAD14'
+            },
+            {
+              label: '设备异常',
+              data: [3, 5, 4, 6, 5, 3],
+              backgroundColor: '#722ED1'
+            },
+            {
+              label: '行为异常',
+              data: [7, 6, 9, 8, 10, 5],
+              backgroundColor: '#EB0AA4'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 12,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          },
+          barPercentage: 0.6
+        }
+      });
+    };
+    
+    // 告警详情模态框功能
+    const setupAlertDetailsModal = () => {
+      const modal = document.getElementById('alertDetailsModal');
+      const closeModal = document.getElementById('closeModal');
+      const viewDetailsBtns = document.querySelectorAll('.view-details');
+      const alertItems = document.querySelectorAll('.alert-item');
+      
+      // 打开模态框
+      const openModal = (alertId) => {
+        // 在实际应用中，这里会根据alertId从服务器加载数据
+        // 这里仅做演示
+        document.getElementById('modalTitle').textContent = `告警详情 - ${alertId}`;
+        document.getElementById('modalAlertId').textContent = alertId;
+        
+        modal.classList.remove('hidden');
+        // 防止背景滚动
+        document.body.style.overflow = 'hidden';
+      };
+      
+      // 关闭模态框
+      const closeModalHandler = () => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      };
+      
+      // 点击查看详情按钮
+      viewDetailsBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const alertId = btn.closest('.alert-item').dataset.id;
+          openModal(alertId);
+        });
+      });
+      
+      // 点击告警行
+      alertItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+          // 点击复选框或更多操作按钮时不打开模态框
+          if (e.target.type === 'checkbox' || e.target.closest('.more-actions')) {
+            return;
+          }
+          openModal(item.dataset.id);
+        });
+      });
+      
+      // 关闭模态框按钮
+      closeModal.addEventListener('click', closeModalHandler);
+      
+      // 点击模态框外部关闭
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModalHandler();
+        }
+      });
+      
+      // 处理模态框内的按钮
+      document.getElementById('ignoreAlert').addEventListener('click', () => {
+        // 模拟处理
+        showToast('已标记为忽略');
+        closeModalHandler();
+      });
+      
+      document.getElementById('furtherInvestigate').addEventListener('click', () => {
+        // 模拟处理
+        showToast('已标记为进一步调查');
+        closeModalHandler();
+      });
+      
+      document.getElementById('markAsResolved').addEventListener('click', () => {
+        // 模拟处理
+        showToast('已标记为已处理');
+        closeModalHandler();
+      });
+    };
+    
+    // 告警状态选择功能
+    const setupStatusSelection = () => {
+      const statusSelects = document.querySelectorAll('.status-select');
+      
+      statusSelects.forEach(select => {
+        select.addEventListener('change', function(e) {
+          e.stopPropagation();
+          const newStatus = this.value;
+          const alertRow = this.closest('tr');
+          const alertId = alertRow.dataset.id;
+          
+          // 更新状态显示样式
+          switch(newStatus) {
+            case 'pending':
+              this.className = 'status-select border-none bg-transparent text-warning font-medium focus:outline-none focus:ring-0';
+              break;
+            case 'processing':
+              this.className = 'status-select border-none bg-transparent text-primary font-medium focus:outline-none focus:ring-0';
+              break;
+            case 'resolved':
+              this.className = 'status-select border-none bg-transparent text-success font-medium focus:outline-none focus:ring-0';
+              break;
+            case 'ignored':
+              this.className = 'status-select border-none bg-transparent text-light-dark font-medium focus:outline-none focus:ring-0';
+              break;
+          }
+          
+          // 显示提示
+          showToast(`告警 ${alertId} 已更新为 ${this.options[this.selectedIndex].text}`);
+        });
+      });
+    };
+    
+    // 批量选择功能
+    const setupBatchSelection = () => {
+      const selectAllCheckbox = document.getElementById('selectAll');
+      const alertCheckboxes = document.querySelectorAll('.alert-select');
+      
+      selectAllCheckbox.addEventListener('change', function() {
+        alertCheckboxes.forEach(checkbox => {
+          checkbox.checked = this.checked;
+        });
+      });
+      
+      // 当所有子复选框都选中时，全选框也选中
+      alertCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          const allChecked = Array.from(alertCheckboxes).every(cb => cb.checked);
+          selectAllCheckbox.checked = allChecked;
+        });
+      });
+    };
+    
+    // 批量操作菜单
+    const setupBatchOperations = () => {
+      const batchBtn = document.getElementById('batchOperationBtn');
+      const batchMenu = document.getElementById('batchOperationMenu');
+      const batchActions = batchMenu.querySelectorAll('a');
+      
+      batchBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        batchMenu.classList.toggle('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!batchBtn.contains(e.target) && !batchMenu.contains(e.target)) {
+          batchMenu.classList.add('hidden');
+        }
+      });
+      
+      // 批量操作
+      batchActions.forEach(action => {
+        action.addEventListener('click', (e) => {
+          e.preventDefault();
+          const actionType = action.dataset.action;
+          const selectedCount = document.querySelectorAll('.alert-select:checked').length;
+          
+          if (selectedCount === 0) {
+            showToast('请先选择要操作的告警', 'warning');
+            return;
+          }
+          
+          let actionText = '';
+          switch(actionType) {
+            case 'resolve':
+              actionText = '已批量标记为已解决';
+              break;
+            case 'ignore':
+              actionText = '已批量标记为已忽略';
+              break;
+            case 'process':
+              actionText = '已批量标记为处理中';
+              break;
+            case 'delete':
+              actionText = '已批量删除选中告警';
+              break;
+          }
+          
+          showToast(`${actionText} (共 ${selectedCount} 项)`);
+          batchMenu.classList.add('hidden');
+        });
+      });
+    };
+    
+    // 其他共用功能
+    const setupCommonFunctions = () => {
+      // 用户菜单功能
+      const userMenuBtn = document.getElementById('userMenuBtn');
+      const userMenu = document.getElementById('userMenu');
+      
+      userMenuBtn.addEventListener('click', () => {
+        userMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('refreshIntervalMenu').classList.add('hidden');
+        document.getElementById('mobileMenu').classList.add('hidden');
+        document.getElementById('batchOperationMenu').classList.add('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+          userMenu.classList.add('hidden');
+        }
+      });
+      
+      // 刷新间隔菜单
+      const refreshBtn = document.getElementById('refreshIntervalBtn');
+      const refreshMenu = document.getElementById('refreshIntervalMenu');
+      const intervalOptions = refreshMenu.querySelectorAll('a');
+      const intervalDisplay = refreshBtn.querySelector('span');
+      
+      let currentInterval = 10; // 默认10秒
+      
+      refreshBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        refreshMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('mobileMenu').classList.add('hidden');
+        document.getElementById('batchOperationMenu').classList.add('hidden');
+      });
+      
+      // 点击外部关闭菜单
+      document.addEventListener('click', (e) => {
+        if (!refreshBtn.contains(e.target) && !refreshMenu.contains(e.target)) {
+          refreshMenu.classList.add('hidden');
+        }
+      });
+      
+      // 选择刷新间隔
+      intervalOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentInterval = option.getAttribute('data-interval');
+          intervalDisplay.textContent = currentInterval === '60' ? '1分钟' : `${currentInterval}秒`;
+          refreshMenu.classList.add('hidden');
+          
+          // 更新自动刷新计时器
+          setupAutoRefresh(currentInterval);
+        });
+      });
+      
+      // 移动端菜单
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        // 关闭其他菜单
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('refreshIntervalMenu').classList.add('hidden');
+        document.getElementById('batchOperationMenu').classList.add('hidden');
+      });
+      
+      // 手动刷新按钮
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        simulateDataRefresh();
+      });
+    };
+    
+    // 自动刷新功能
+    let refreshTimer;
+    const setupAutoRefresh = (intervalSeconds) => {
+      // 清除现有计时器
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+      }
+      
+      // 设置新计时器
+      refreshTimer = setInterval(() => {
+        // 模拟数据刷新
+        simulateDataRefresh();
+      }, intervalSeconds * 1000);
+    };
+    
+    // 模拟数据刷新
+    const simulateDataRefresh = () => {
+      // 这里可以添加实际的数据刷新逻辑
+      console.log('数据已刷新');
+      
+      // 显示更新提示
+      showToast('数据已更新');
+    };
+    
+    // 显示提示消息
+    const showToast = (message, type = 'success') => {
+      const toast = document.getElementById('updateToast');
+      const icon = toast.querySelector('i');
+      
+      // 设置提示类型样式
+      if (type === 'warning') {
+        toast.classList.remove('bg-primary');
+        toast.classList.add('bg-warning');
+        icon.className = 'fa fa-exclamation-circle mr-2';
+      } else {
+        toast.classList.remove('bg-warning');
+        toast.classList.add('bg-primary');
+        icon.className = 'fa fa-refresh mr-2';
+      }
+      
+      toast.querySelector('span').textContent = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      
+      // 3秒后隐藏提示
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    };
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      initAlertLevelChart();
+      initAlertTypeChart();
+      setupAlertDetailsModal();
+      setupStatusSelection();
+      setupBatchSelection();
+      setupBatchOperations();
+      setupCommonFunctions();
+      
+      // 默认设置10秒自动刷新
+      setupAutoRefresh(10);
+    });
+  </script>
+</body>
+</html>
