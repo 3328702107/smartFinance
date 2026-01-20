@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
 from io import StringIO
+from typing import Optional
 
 from flask import Blueprint, request, Response
 from sqlalchemy import or_
 
-from extensions import db
-from models import DataSource, DataQualityIssue
-from api_utils import api_response, paginated_response
+from core.database import db
+from models.data import DataSource, DataQualityIssue
+from utils.response import api_response, paginated_response
 
 bp = Blueprint("data_collection", __name__, url_prefix="/data-collection")
 
@@ -314,7 +315,7 @@ def export_quality_issues(source_id):
 
 # 辅助映射函数
 
-def _map_source_type_code(source_type: str | None) -> str:
+def _map_source_type_code(source_type: Optional[str]) -> str:
     mapping = {
         "数据库": "database",
         "API": "api",
@@ -324,7 +325,7 @@ def _map_source_type_code(source_type: str | None) -> str:
     return mapping.get(source_type or "", "database")
 
 
-def _map_source_status_code(status: str | None) -> str:
+def _map_source_status_code(status: Optional[str]) -> str:
     mapping = {
         "正常": "normal",
         "异常": "error",
@@ -333,7 +334,7 @@ def _map_source_status_code(status: str | None) -> str:
     return mapping.get(status or "", "normal")
 
 
-def _map_issue_type_code(issue_type: str | None) -> str:
+def _map_issue_type_code(issue_type: Optional[str]) -> str:
     mapping = {
         "缺失字段": "missing",
         "格式错误": "format",

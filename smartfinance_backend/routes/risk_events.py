@@ -1,6 +1,10 @@
 from flask import Blueprint, request, jsonify
-from extensions import db
-from models import RiskEvent, EventTimeline, HandlingRecord, Alert, RelatedUser, User, Device, FinancialTransaction
+from core.database import db
+from models.risk import RiskEvent, EventTimeline, Alert
+from models.analysis import HandlingRecord, RelatedUser
+from models.user import User
+from models.device import Device
+from models.transaction import FinancialTransaction
 
 bp = Blueprint("risk_events", __name__, url_prefix="/api/risk_events")
 

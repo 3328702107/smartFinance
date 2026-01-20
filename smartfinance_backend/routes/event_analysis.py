@@ -1,19 +1,15 @@
 from datetime import datetime
+from typing import Optional
 
 from flask import Blueprint, request, Response
 
-from extensions import db
-from models import (
-    RiskEvent,
-    EventTimeline,
-    RelatedUser,
-    Device,
-    FinancialTransaction,
-    HandlingRecord,
-    RiskAnalysisRecommendation,
-    User,
-)
-from api_utils import api_response, paginated_response
+from core.database import db
+from models.risk import RiskEvent, EventTimeline, Alert
+from models.analysis import RelatedUser, HandlingRecord, RiskAnalysisRecommendation
+from models.device import Device
+from models.transaction import FinancialTransaction
+from models.user import User
+from utils.response import api_response, paginated_response
 
 
 bp = Blueprint("event_analysis", __name__, url_prefix="/event-analysis")
@@ -23,7 +19,7 @@ def _dt(v):
     return v.strftime("%Y-%m-%d %H:%M:%S") if v else None
 
 
-def _status_code(status: str | None) -> str:
+def _status_code(status: Optional[str]) -> str:
     if not status:
         return "pending"
     mapping = {
@@ -35,7 +31,7 @@ def _status_code(status: str | None) -> str:
     return mapping.get(status, "pending")
 
 
-def _level_code(level: str | None) -> str:
+def _level_code(level: Optional[str]) -> str:
     if not level:
         return "medium"
     return {"高": "high", "中": "medium", "低": "low"}.get(level, "medium")
@@ -79,11 +75,11 @@ def event_timeline(event_id):
     event = RiskEvent.query.get_or_404(event_id)
     items = (
         EventTimeline.query.filter_by(event_id=event.event_id)
-        .order_by(EventTimeline.occur_time.asc())
+        .order_by(EventTimeline.timestamp.asc())
         .all()
     )
 
-    def _type_code(t: str | None) -> str:
+    def _type_code(t: Optional[str]) -> str:
         if not t:
             return "info"
         if "登录" in t:
@@ -98,10 +94,10 @@ def event_timeline(event_id):
 
     data = [
         {
-            "time": _dt(i.occur_time),
-            "type": _type_code(i.event_type),
-            "typeName": i.event_type,
-            "description": i.description,
+            "time": _dt(i.timestamp),
+            "type": _type_code(i.type),
+            "typeName": i.step_title or i.type,
+            "description": i.step_description,
         }
         for i in items
     ]
@@ -166,15 +162,15 @@ def related_accounts(event_id):
     event = RiskEvent.query.get_or_404(event_id)
     related = RelatedUser.query.filter_by(event_id=event.event_id).all()
 
-    data = [
-        {
-            "userId": r.related_user_id,
-            "username": r.related_username,
+    data = []
+    for r in related:
+        user = User.query.get(r.user_id) if r.user_id else None
+        data.append({
+            "userId": r.user_id,
+            "username": user.username if user else None,
             "relationType": r.relation_type,
             "riskScore": r.risk_score,
-        }
-        for r in related
-    ]
+        })
 
     return api_response(data=data)
 
@@ -191,7 +187,7 @@ def event_devices_ips(event_id):
             {
                 "deviceId": device.device_id,
                 "deviceName": device.device_name,
-                "deviceType": device.device_type,
+                "deviceType": device.os_type,
                 "location": device.location,
             }
         )
@@ -226,10 +222,10 @@ def event_transactions(event_id):
 
     items = [
         {
-            "transactionId": t.transaction_id,
+            "transactionId": t.tx_id,
             "time": _dt(t.transaction_time),
             "amount": float(t.amount) if t.amount is not None else None,
-            "type": t.transaction_type,
+            "type": t.category,
             "status": t.status,
         }
         for t in pagination.items
@@ -265,13 +261,15 @@ def event_risk_analysis(event_id):
     event = RiskEvent.query.get_or_404(event_id)
     rec = (
         RiskAnalysisRecommendation.query.filter_by(event_id=event.event_id)
-        .order_by(RiskAnalysisRecommendation.id.desc())
+        .order_by(RiskAnalysisRecommendation.rec_id.desc())
         .first()
     )
 
     if rec:
-        assessment = rec.analysis_content
-        suggestions = [rec.suggestion_1, rec.suggestion_2, rec.suggestion_3]
+        assessment = rec.risk_assessment
+        # 将 recommendation_text 按行分割成建议列表
+        suggestions_text = rec.recommendation_text or ""
+        suggestions = [line.strip() for line in suggestions_text.split("\n") if line.strip()] if suggestions_text else []
     else:
         assessment = event.description or "该事件存在一定风险，请结合业务规则进一步分析。"
         suggestions = [
@@ -281,7 +279,7 @@ def event_risk_analysis(event_id):
 
     data = {
         "assessment": assessment,
-        "suggestions": [s for s in suggestions if s],
+        "suggestions": suggestions,
     }
 
     return api_response(data=data)
@@ -299,7 +297,7 @@ def event_processing_records(event_id):
 
     data = [
         {
-            "id": r.id,
+            "id": r.record_id,
             "operator": r.operator,
             "action": r.action,
             "time": _dt(r.action_time),

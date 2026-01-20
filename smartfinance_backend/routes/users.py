@@ -1,6 +1,7 @@
 # blueprints/users.py
 from flask import Blueprint, request, jsonify
-from models import User, LoginLog
+from models.user import User
+from models.data import LoginLog
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 
 @bp.get("/")

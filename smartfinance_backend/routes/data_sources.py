@@ -1,7 +1,7 @@
 # blueprints/data_sources.py
 from flask import Blueprint
-from models import DataSource, DataQualityIssue
-from api_utils import api_response
+from models.data import DataSource, DataQualityIssue
+from utils.response import api_response
 
 bp = Blueprint("data_sources", __name__, url_prefix="/api/data_sources")
 

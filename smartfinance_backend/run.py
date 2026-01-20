@@ -1,0 +1,6 @@
+# 应用启动脚本（新增）
+from app import create_app
+
+if __name__ == "__main__":
+    app = create_app("dev")
+    app.run(host="0.0.0.0", port=5000, debug=True)

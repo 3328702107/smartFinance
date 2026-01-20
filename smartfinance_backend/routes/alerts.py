@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta
+from typing import Optional
 
 from flask import Blueprint, request, Response
-from extensions import db
-from models import Alert, RiskEvent, User, HandlingRecord
-from api_utils import api_response, paginated_response
+from core.database import db
+from models.risk import Alert, RiskEvent
+from models.analysis import HandlingRecord
+from models.user import User
+from utils.response import api_response, paginated_response
 
 bp = Blueprint("alerts", __name__, url_prefix="/api/alerts")
 
@@ -16,7 +19,7 @@ STATUS_MAP = {
 }
 
 
-def _normalize_status(value: str | None):
+def _normalize_status(value: Optional[str]):
     if not value:
         return None
     return STATUS_MAP.get(value, value)

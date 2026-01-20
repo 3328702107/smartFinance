@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, request
 
-from extensions import db
-from models import RiskEvent, User
-from api_utils import api_response, paginated_response
+from core.database import db
+from models.risk import RiskEvent
+from models.user import User
+from utils.response import api_response, paginated_response
 
 bp = Blueprint("monitor", __name__, url_prefix="/api/monitor")
 
@@ -127,7 +128,7 @@ def monitor_risk_trend():
 
 @bp.get("/system-status")
 def monitor_system_status():
-    from models import DataSource
+    from models.data import DataSource
 
     model_status = "normal"
     data_status = "normal"
@@ -148,7 +149,7 @@ def monitor_system_status():
 
 @bp.get("/risk-events/<event_id>")
 def monitor_risk_event_detail(event_id):
-    from models import Device
+    from models.device import Device
 
     ev = RiskEvent.query.get_or_404(event_id)
     user = User.query.get(ev.user_id) if ev.user_id else None

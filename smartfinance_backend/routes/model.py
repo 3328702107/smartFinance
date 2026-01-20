@@ -1,7 +1,7 @@
-# blueprints/model_stub.py
+# 模型路由
 from flask import Blueprint, request, jsonify
 
-bp = Blueprint("model_stub", __name__, url_prefix="/api/model")
+bp = Blueprint("model", __name__, url_prefix="/api/model")
 
 @bp.post("/risk_score")
 def mock_risk_score():

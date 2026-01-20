@@ -2,8 +2,11 @@ import uuid
 from datetime import datetime, timedelta
 
 from flask import Blueprint, request, jsonify
-from extensions import db
-from models import FinancialTransaction, RiskEvent, EventTimeline, Alert, User, Device
+from core.database import db
+from models.transaction import FinancialTransaction
+from models.risk import RiskEvent, EventTimeline, Alert
+from models.user import User
+from models.device import Device
 
 bp = Blueprint("transactions", __name__, url_prefix="/api/transactions")
 

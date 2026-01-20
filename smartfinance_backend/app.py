@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 from config import config_map
-from extensions import db
-from blueprints import register_blueprints
+from core.database import db
+from routes import register_blueprints
 
 def create_app(config_name="default"):
     app = Flask(__name__)
@@ -25,7 +25,7 @@ def create_app(config_name="default"):
         # 数据运行状态：任一数据源异常/中断则视为异常
         data_status = "unknown"
         try:
-            from models import DataSource  # 延迟导入避免循环引用
+            from models.data import DataSource  # 延迟导入避免循环引用
 
             abnormal = DataSource.query.filter(DataSource.status != "正常").count()
             data_status = "正常" if abnormal == 0 else "异常"

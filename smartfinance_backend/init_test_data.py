@@ -2,20 +2,13 @@ from datetime import datetime, timedelta
 import uuid
 
 from app import create_app
-from extensions import db
-from models import (
-    User,
-    Device,
-    FinancialTransaction,
-    RiskEvent,
-    EventTimeline,
-    Alert,
-    DataSource,
-    DataQualityIssue,
-    LoginLog,
-    RelatedUser,
-    RiskAnalysisRecommendation,
-)
+from core.database import db
+from models.user import User, AuthAccount
+from models.data import LoginLog, DataSource, DataQualityIssue
+from models.device import Device
+from models.transaction import FinancialTransaction
+from models.risk import RiskEvent, EventTimeline, Alert
+from models.analysis import RelatedUser, RiskAnalysisRecommendation
 
 app = create_app("dev")
 
@@ -26,23 +19,27 @@ def main():
         db.create_all()
 
         # 清空旧数据（仅开发环境使用，生产千万别这么写）
+        # 按外键依赖顺序删除：先删除子表，再删除父表
         for model in [
             Alert,
+            RiskAnalysisRecommendation,
+            RelatedUser,
             EventTimeline,
+            RiskEvent,
             FinancialTransaction,
             LoginLog,
-            RelatedUser,
-            RiskAnalysisRecommendation,
             DataQualityIssue,
             DataSource,
             Device,
-            RiskEvent,
+            AuthAccount,
             User,
         ]:
             db.session.query(model).delete()
         db.session.commit()
 
         now = datetime.utcnow()
+
+        # ========== 第一步：插入基础数据（无外键依赖） ==========
 
         # 用户
         u1 = User(
@@ -63,28 +60,8 @@ def main():
             account_level="VIP",
             registration_time=now - timedelta(days=200),
         )
-
-        # 设备
-        d1 = Device(
-            device_id="d_test_001",
-            user=u1,
-            device_name="Alice iPhone",
-            os_type="iOS",
-            ip_address="1.1.1.1",
-            location="武汉",
-            is_normal=True,
-            last_login_time=now - timedelta(hours=1),
-        )
-        d2 = Device(
-            device_id="d_test_002",
-            user=u2,
-            device_name="Bob Android",
-            os_type="Android",
-            ip_address="2.2.2.2",
-            location="北京",
-            is_normal=False,
-            last_login_time=now - timedelta(hours=2),
-        )
+        db.session.add_all([u1, u2])
+        db.session.commit()
 
         # 数据源
         s1 = DataSource(
@@ -105,8 +82,50 @@ def main():
             error_count=3,
             last_error_message="网络超时",
         )
+        db.session.add_all([s1, s2])
+        db.session.commit()
 
-        # 数据质量问题
+        # ========== 第二步：插入依赖 User 的数据 ==========
+
+        from werkzeug.security import generate_password_hash
+
+        # 认证账户（密码）
+        a1 = AuthAccount(
+            user_id="u_test_001",
+            password_hash=generate_password_hash("123456")
+        )
+        a2 = AuthAccount(
+            user_id="u_test_002",
+            password_hash=generate_password_hash("123456")
+        )
+        db.session.add_all([a1, a2])
+
+        # 设备
+        d1 = Device(
+            device_id="d_test_001",
+            user_id="u_test_001",
+            device_name="Alice iPhone",
+            os_type="iOS",
+            ip_address="1.1.1.1",
+            location="武汉",
+            is_normal=True,
+            last_login_time=now - timedelta(hours=1),
+        )
+        d2 = Device(
+            device_id="d_test_002",
+            user_id="u_test_002",
+            device_name="Bob Android",
+            os_type="Android",
+            ip_address="2.2.2.2",
+            location="北京",
+            is_normal=False,
+            last_login_time=now - timedelta(hours=2),
+        )
+        db.session.add_all([d1, d2])
+        db.session.commit()
+
+        # ========== 第三步：插入依赖 DataSource 的数据 ==========
+
         q1 = DataQualityIssue(
             source_id="src_login",
             issue_type="缺失字段",
@@ -115,9 +134,10 @@ def main():
             severity="中",
             status="未处理",
         )
-
-        db.session.add_all([u1, u2, d1, d2, s1, s2, q1])
+        db.session.add(q1)
         db.session.commit()
+
+        # ========== 第四步：插入依赖 User 和 Device 的数据 ==========
 
         # 登录日志
         log1 = LoginLog(
@@ -168,7 +188,8 @@ def main():
         db.session.add_all([tx1, tx2])
         db.session.commit()
 
-        # 风险事件
+        # ========== 第五步：插入风险事件及关联数据 ==========
+
         ev_id = "ev_test_001"
         ev = RiskEvent(
             event_id=ev_id,

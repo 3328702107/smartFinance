@@ -1,7 +1,19 @@
+# Web Framework
 Flask==3.0.0
-Flask_SQLAlchemy==3.1.1
-Flask-Migrate==4.0.5
+Flask-SQLAlchemy==3.1.1
+Werkzeug==3.0.1
+
+# Database Driver
 PyMySQL==1.1.0
-python-dotenv==1.0.1
-cryptography>=41.0.0
+
+# Authentication
 PyJWT==2.8.0
+
+# Password Hashing (via Werkzeug, but listing for clarity)
+# werkzeug.security provides generate_password_hash and check_password_hash
+
+# Utilities
+python-dotenv==1.0.1
+
+# Optional: Database Migration Tool (not currently used but available)
+Flask-Migrate==4.0.5
