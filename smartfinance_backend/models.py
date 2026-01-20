@@ -7,6 +7,14 @@ class User(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     phone = db.Column(db.String(20))
     email = db.Column(db.String(100))
+    # 头像 URL，可选
+    avatar = db.Column(db.String(255))
+    # 可选：用户所属部门
+    department = db.Column(db.String(100))
+    # 可选：用户角色（如 manager、risk_analyst 等）
+    role = db.Column(db.String(50))
+    # 可选：员工编号
+    employee_id = db.Column(db.String(50))
     registration_time = db.Column(db.DateTime)
     account_level = db.Column(db.Enum("普通", "VIP"))
     status = db.Column(db.Enum("正常", "冻结", "注销"))
