@@ -34,13 +34,36 @@ def ingest_transaction():
     if not user_id or amount is None:
         return jsonify({"message": "user_id and amount required"}), 400
 
+    # 校验用户是否存在，避免违反 financial_transactions.user_id 外键约束
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "user not found"}), 400
+
     tx_id = data.get("tx_id") or uuid.uuid4().hex[:32]
     now = datetime.utcnow()
+
+    # 设备处理：如果传入了 device_id 且设备不存在，则自动创建；存在则挂到当前用户
+    real_device_id = None
+    if device_id:
+        device = Device.query.get(device_id)
+        if not device:
+            device = Device(
+                device_id=device_id,
+                user_id=user_id,
+                ip_address=ip,
+                last_login_time=now,
+                is_normal=True,
+            )
+            db.session.add(device)
+            db.session.flush()
+        else:
+            device.user_id = user_id
+        real_device_id = device.device_id
 
     tx = FinancialTransaction(
         tx_id=tx_id,
         user_id=user_id,
-        device_id=device_id,
+        device_id=real_device_id,
         amount=amount,
         currency=data.get("currency", "CNY"),
         transaction_time=now,

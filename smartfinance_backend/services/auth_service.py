@@ -85,16 +85,46 @@ class AuthService:
     def create_login_log(user, device_id=None, ip=None, client_type="WEB", location=None):
         """创建登录日志"""
         token = AuthService.generate_token(user.user_id)
+
+        # 兼容新设备：如果传入的 device_id 在 devices 表中不存在，则自动创建一条设备记录；
+        # 如果存在则更新其最近登录信息。这样可以避免 login_logs 的外键约束报错。
+        now = datetime.utcnow()
+        real_device_id = None
+
+        if device_id:
+            device = Device.query.get(device_id)
+            if not device:
+                device = Device(
+                    device_id=device_id,
+                    user_id=user.user_id,
+                    ip_address=ip,
+                    location=location,
+                    last_login_time=now,
+                    is_normal=True,
+                )
+                db.session.add(device)
+                # 先将新设备写入数据库，避免后续 login_logs 插入时外键约束失败
+                db.session.flush()
+            else:
+                device.user_id = user.user_id
+                if ip:
+                    device.ip_address = ip
+                if location:
+                    device.location = location
+                device.last_login_time = now
+
+            real_device_id = device.device_id
+
         log = LoginLog(
             user_id=user.user_id,
-            device_id=device_id,
+            device_id=real_device_id,
             ip_address=ip,
-            login_time=datetime.utcnow(),
+            login_time=now,
             login_status="成功",
             login_location=location,
             client_type=client_type,
             session_token=token,
-            created_at=datetime.utcnow(),
+            created_at=now,
         )
         db.session.add(log)
         db.session.commit()
