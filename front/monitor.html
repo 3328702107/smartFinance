@@ -80,19 +80,6 @@
         <!-- 右侧用户信息 -->
         <div class="flex items-center space-x-4">
           <div class="relative">
-            <button id="refreshIntervalBtn" class="flex items-center text-light-dark hover:text-primary transition-smooth">
-              <i class="fa fa-refresh mr-1"></i>
-              <!-- <span class="hidden md:inline">10秒</span> -->
-            </button>
-            <div id="refreshIntervalMenu" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg py-1 z-10">
-              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="5">5秒</a>
-              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="10">10秒</a>
-              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="30">30秒</a>
-              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth" data-interval="60">1分钟</a>
-            </div>
-          </div>
-          
-          <div class="relative">
             <button id="userMenuBtn" class="flex items-center space-x-2 focus:outline-none">
               <img src="https://picsum.photos/id/1005/200/200" alt="用户头像" class="w-8 h-8 rounded-full object-cover border-2 border-primary">
               <span class="hidden md:inline text-sm font-medium">张经理</span>
@@ -101,9 +88,6 @@
             <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
               <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
                 <i class="fa fa-user mr-2"></i>个人资料
-              </a>
-              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
-                <i class="fa fa-cog mr-2"></i>账户设置
               </a>
               <div class="border-t border-gray-100 my-1"></div>
               <a href="#" class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth">
@@ -142,16 +126,11 @@
 
   <!-- 主内容区 -->
   <main class="flex-grow container mx-auto px-4 py-6">
-    <!-- 合并页面标题和系统状态卡片在同一行 -->
+    <!-- 系统状态卡片 -->
     <div class="mb-6">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">实时风险监控</h2>
-          <p class="text-light-dark mt-1">实时监测系统风险事件，及时处理异常情况</p>
-        </div>
-        
-        <!-- 系统状态卡片 -->
-        <div class="grid grid-cols-2 md:grid-cols-2 gap-4 mt-4 md:mt-0">
+        <!-- 系统状态卡片 - 左上角 -->
+        <div class="grid grid-cols-2 gap-4">
           <div class="bg-white rounded-lg p-3 card-shadow">
             <div class="text-light-dark text-sm">模型运行状态</div>
             <div class="text-xl font-semibold text-success mt-1">正常</div>
@@ -159,6 +138,26 @@
           <div class="bg-white rounded-lg p-3 card-shadow">
             <div class="text-light-dark text-sm">数据运行状态</div>
             <div class="text-xl font-semibold text-success mt-1">正常</div>
+          </div>
+        </div>
+        
+        <!-- 告警统计卡片 - 右上角 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 md:mt-0">
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">总告警数</div>
+            <div class="text-xl font-semibold mt-1">147</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">待处理</div>
+            <div class="text-xl font-semibold text-warning mt-1">36</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">已解决</div>
+            <div class="text-xl font-semibold text-success mt-1">98</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 card-shadow">
+            <div class="text-light-dark text-sm">高风险</div>
+            <div class="text-xl font-semibold text-danger mt-1">13</div>
           </div>
         </div>
       </div>
@@ -205,435 +204,25 @@
       </div>
     </section>
     
-    <!-- 实时风险事件列表 -->
-    <section>
-      <div class="bg-white rounded-xl card-shadow overflow-hidden">
-        <div class="p-6 border-b border-gray-100">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <h3 class="text-lg font-semibold mb-3 md:mb-0">实时风险事件</h3>
-            <div class="flex flex-col sm:flex-row gap-3">
-              <div class="relative">
-                <input type="text" placeholder="搜索事件..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth w-full sm:w-64">
-                <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-light-dark"></i>
-              </div>
-              <select class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth">
-                <option value="all">全部类型</option>
-                <option value="fraud">欺诈</option>
-                <option value="fake">伪造图像</option>
-                <option value="abnormal">异常交易</option>
-                <option value="other">其他</option>
-              </select>
-              <select class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth">
-                <option value="all">全部状态</option>
-                <option value="pending">待处理</option>
-                <option value="resolved">已解决</option>
-              </select>
-            </div>
-          </div>
+    <!-- 风险告警可视化 -->
+    <section class="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-xl p-6 card-shadow lg:col-span-1">
+        <h3 class="text-lg font-semibold mb-4">告警级别分布</h3>
+        <div class="h-64">
+          <canvas id="alertLevelChart"></canvas>
         </div>
-        
-        <!-- 事件列表 -->
-        <div class="divide-y divide-gray-100">
-          <!-- 风险事件1 - 高风险 -->
-          <div class="event-item">
-            <div class="p-6 cursor-pointer hover:bg-gray-50 transition-smooth event-header">
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div class="flex items-start space-x-4">
-                  <div class="bg-danger/10 text-danger p-2 rounded-lg">
-                    <i class="fa fa-exclamation-triangle"></i>
-                  </div>
-                  <div>
-                    <div class="flex items-center space-x-2">
-                      <h4 class="font-medium">疑似账户盗用</h4>
-                      <span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">高风险</span>
-                    </div>
-                    <p class="text-sm text-light-dark mt-1">检测到异地异常登录行为，IP地址与常用地址不符</p>
-                  </div>
-                </div>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center mt-4 md:mt-0 space-y-2 sm:space-y-0 sm:space-x-6">
-                  <div class="flex items-center text-sm">
-                    <span class="text-light-dark mr-2">状态:</span>
-                    <span class="text-warning font-medium">待处理</span>
-                  </div>
-                  <div class="text-sm text-light-dark">
-                    <i class="fa fa-clock-o mr-1"></i>10:24:35
-                  </div>
-                  <button class="event-toggle text-primary hover:text-primary/80 transition-smooth">
-                    <i class="fa fa-chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 事件详情 -->
-            <div class="event-details hidden bg-gray-50 p-6 border-t border-gray-100">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h5 class="font-medium mb-4">事件详情</h5>
-                  <div class="space-y-3 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">事件ID:</span>
-                      <span>RISK-20230615-001</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">检测时间:</span>
-                      <span>2023-06-15 10:24:35</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">风险评分:</span>
-                      <span class="text-danger font-medium">92分</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">风险类型:</span>
-                      <span>账户盗用</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">登录IP:</span>
-                      <span>185.173.89.xxx</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">登录地点:</span>
-                      <span>俄罗斯 莫斯科</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">常用登录地:</span>
-                      <span>中国 上海</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h5 class="font-medium mb-4">用户信息</h5>
-                  <div class="space-y-3 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">用户ID:</span>
-                      <span>USER-789456</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">用户名:</span>
-                      <span>wangxiaoming</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">注册时间:</span>
-                      <span>2022-03-15</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">账户等级:</span>
-                      <span>VIP会员</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">最近登录:</span>
-                      <span>2023-06-14 20:15:32 (上海)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mt-6 pt-6 border-t border-gray-200">
-                <h5 class="font-medium mb-4">风险评估</h5>
-                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                  <p class="text-sm mb-3">该用户账户在异地IP地址登录，与常用登录地差异较大，且登录设备为新设备。历史上该用户无类似异常行为记录，存在账户盗用风险。</p>
-                  <div class="flex flex-wrap gap-2 mt-4">
-                    <button class="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 transition-smooth text-sm">
-                      <i class="fa fa-lock mr-1"></i>冻结账户
-                    </button>
-                    <button class="px-4 py-2 bg-warning text-white rounded-md hover:bg-warning/90 transition-smooth text-sm">
-                      <i class="fa fa-envelope mr-1"></i>发送验证
-                    </button>
-                    <button class="px-4 py-2 bg-success text-white rounded-md hover:bg-success/90 transition-smooth text-sm">
-                      <i class="fa fa-check mr-1"></i>标记为已处理
-                    </button>
-                    <button class="px-4 py-2 bg-gray-200 text-light-dark rounded-md hover:bg-gray-300 transition-smooth text-sm">
-                      <i class="fa fa-times mr-1"></i>忽略
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 风险事件2 - 中风险 -->
-          <div class="event-item">
-            <div class="p-6 cursor-pointer hover:bg-gray-50 transition-smooth event-header">
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div class="flex items-start space-x-4">
-                  <div class="bg-warning/10 text-warning p-2 rounded-lg">
-                    <i class="fa fa-exclamation-circle"></i>
-                  </div>
-                  <div>
-                    <div class="flex items-center space-x-2">
-                      <h4 class="font-medium">异常交易行为</h4>
-                      <span class="px-2 py-0.5 bg-warning/10 text-warning text-xs rounded-full">中风险</span>
-                    </div>
-                    <p class="text-sm text-light-dark mt-1">短时间内多次进行大额转账，交易频率超出正常范围</p>
-                  </div>
-                </div>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center mt-4 md:mt-0 space-y-2 sm:space-y-0 sm:space-x-6">
-                  <div class="flex items-center text-sm">
-                    <span class="text-light-dark mr-2">状态:</span>
-                    <span class="text-warning font-medium">待处理</span>
-                  </div>
-                  <div class="text-sm text-light-dark">
-                    <i class="fa fa-clock-o mr-1"></i>09:15:22
-                  </div>
-                  <button class="event-toggle text-primary hover:text-primary/80 transition-smooth">
-                    <i class="fa fa-chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 事件详情 -->
-            <div class="event-details hidden bg-gray-50 p-6 border-t border-gray-100">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h5 class="font-medium mb-4">事件详情</h5>
-                  <div class="space-y-3 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">事件ID:</span>
-                      <span>RISK-20230615-002</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">检测时间:</span>
-                      <span>2023-06-15 09:15:22</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">风险评分:</span>
-                      <span class="text-warning font-medium">68分</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">风险类型:</span>
-                      <span>异常交易</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">交易次数:</span>
-                      <span>5次/10分钟</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">交易总额:</span>
-                      <span>¥185,000.00</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h5 class="font-medium mb-4">交易信息</h5>
-                  <div class="space-y-3 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">交易账户:</span>
-                      <span>6228 **** **** 5678</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">收款方1:</span>
-                      <span>李** (6217 **** **** 3456)</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">收款方2:</span>
-                      <span>张** (6214 **** **** 7890)</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">交易地点:</span>
-                      <span>中国 北京 (常用地点)</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">交易设备:</span>
-                      <span>iPhone 13 (常用设备)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mt-6 pt-6 border-t border-gray-200">
-                <h5 class="font-medium mb-4">风险评估</h5>
-                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                  <p class="text-sm mb-3">该账户在短时间内进行了多次大额转账，交易频率高于历史平均水平3倍以上，但交易地点和设备均为常用，可能存在正常业务往来，但仍需警惕。</p>
-                  <div class="flex flex-wrap gap-2 mt-4">
-                    <button class="px-4 py-2 bg-warning text-white rounded-md hover:bg-warning/90 transition-smooth text-sm">
-                      <i class="fa fa-phone mr-1"></i>电话核实
-                    </button>
-                    <button class="px-4 py-2 bg-success text-white rounded-md hover:bg-success/90 transition-smooth text-sm">
-                      <i class="fa fa-check mr-1"></i>标记为已处理
-                    </button>
-                    <button class="px-4 py-2 bg-gray-200 text-light-dark rounded-md hover:bg-gray-300 transition-smooth text-sm">
-                      <i class="fa fa-times mr-1"></i>忽略
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 风险事件3 - 低风险 -->
-          <div class="event-item">
-            <div class="p-6 cursor-pointer hover:bg-gray-50 transition-smooth event-header">
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div class="flex items-start space-x-4">
-                  <div class="bg-info/10 text-info p-2 rounded-lg">
-                    <i class="fa fa-info-circle"></i>
-                  </div>
-                  <div>
-                    <div class="flex items-center space-x-2">
-                      <h4 class="font-medium">疑似伪造证件</h4>
-                      <span class="px-2 py-0.5 bg-info/10 text-info text-xs rounded-full">低风险</span>
-                    </div>
-                    <p class="text-sm text-light-dark mt-1">证件照片存在轻微篡改痕迹，需进一步验证</p>
-                  </div>
-                </div>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center mt-4 md:mt-0 space-y-2 sm:space-y-0 sm:space-x-6">
-                  <div class="flex items-center text-sm">
-                    <span class="text-light-dark mr-2">状态:</span>
-                    <span class="text-success font-medium">已解决</span>
-                  </div>
-                  <div class="text-sm text-light-dark">
-                    <i class="fa fa-clock-o mr-1"></i>08:42:17
-                  </div>
-                  <button class="event-toggle text-primary hover:text-primary/80 transition-smooth">
-                    <i class="fa fa-chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 事件详情 -->
-            <div class="event-details hidden bg-gray-50 p-6 border-t border-gray-100">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h5 class="font-medium mb-4">事件详情</h5>
-                  <div class="space-y-3 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">事件ID:</span>
-                      <span>RISK-20230615-003</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">检测时间:</span>
-                      <span>2023-06-15 08:42:17</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">风险评分:</span>
-                      <span class="text-info font-medium">35分</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">风险类型:</span>
-                      <span>伪造证件</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">证件类型:</span>
-                      <span>身份证</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">处理时间:</span>
-                      <span>2023-06-15 09:05:33</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">处理人:</span>
-                      <span>李审核</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h5 class="font-medium mb-4">验证结果</h5>
-                  <div class="space-y-3 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">验证方式:</span>
-                      <span>人工审核 + 系统比对</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">篡改区域:</span>
-                      <span>照片边缘轻微痕迹</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">证件真实性:</span>
-                      <span class="text-success">真实有效</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">处理结果:</span>
-                      <span>通过验证</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-light-dark">备注:</span>
-                      <span class="text-right">边缘痕迹可能为扫描造成，证件信息真实</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mt-6 pt-6 border-t border-gray-200">
-                <h5 class="font-medium mb-4">处理记录</h5>
-                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                  <div class="flex items-start space-x-3 text-sm">
-                    <div class="bg-success/10 text-success p-1 rounded-full mt-0.5">
-                      <i class="fa fa-check"></i>
-                    </div>
-                    <div>
-                      <p>经人工审核，确认该证件为真实有效，边缘痕迹可能是扫描过程中造成的，非人为篡改。已通过验证。</p>
-                      <p class="text-light-dark mt-2">处理时间: 2023-06-15 09:05:33 | 处理人: 李审核</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 风险事件4 - 高风险 -->
-          <div class="event-item">
-            <div class="p-6 cursor-pointer hover:bg-gray-50 transition-smooth event-header">
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div class="flex items-start space-x-4">
-                  <div class="bg-danger/10 text-danger p-2 rounded-lg">
-                    <i class="fa fa-exclamation-triangle"></i>
-                  </div>
-                  <div>
-                    <div class="flex items-center space-x-2">
-                      <h4 class="font-medium">批量注册异常</h4>
-                      <span class="px-2 py-0.5 bg-danger/10 text-danger text-xs rounded-full">高风险</span>
-                    </div>
-                    <p class="text-sm text-light-dark mt-1">同一IP地址在1小时内注册超过20个账户，疑似恶意注册</p>
-                  </div>
-                </div>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center mt-4 md:mt-0 space-y-2 sm:space-y-0 sm:space-x-6">
-                  <div class="flex items-center text-sm">
-                    <span class="text-light-dark mr-2">状态:</span>
-                    <span class="text-warning font-medium">待处理</span>
-                  </div>
-                  <div class="text-sm text-light-dark">
-                    <i class="fa fa-clock-o mr-1"></i>07:36:51
-                  </div>
-                  <button class="event-toggle text-primary hover:text-primary/80 transition-smooth">
-                    <i class="fa fa-chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 事件详情 -->
-            <div class="event-details hidden bg-gray-50 p-6 border-t border-gray-100">
-              <!-- 详情内容结构同上，省略 -->
-            </div>
-          </div>
-        </div>
-        
-        <!-- 分页 -->
-        <div class="p-6 border-t border-gray-100 flex justify-between items-center">
-          <div class="text-sm text-light-dark">
-            显示 1-4 条，共 24 条
-          </div>
-          <div class="flex space-x-1">
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 text-light-dark hover:border-primary hover:text-primary transition-smooth disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              <i class="fa fa-angle-left"></i>
-            </button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md bg-primary text-white">1</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">2</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">3</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">4</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-primary hover:text-primary transition-smooth">5</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 text-light-dark hover:border-primary hover:text-primary transition-smooth">
-              <i class="fa fa-angle-right"></i>
-            </button>
-          </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 card-shadow lg:col-span-2">
+        <h3 class="text-lg font-semibold mb-4">告警类型趋势</h3>
+        <div class="h-64">
+          <canvas id="alertTypeChart"></canvas>
         </div>
       </div>
     </section>
+    
+    <!-- 实时风险事件列表 -->
+
   </main>
 
   <!-- 页脚 -->
@@ -729,6 +318,112 @@
       });
     };
     
+    // 初始化告警级别分布图表
+    const initAlertLevelChart = () => {
+      const ctx = document.getElementById('alertLevelChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['高风险', '中风险', '低风险'],
+          datasets: [{
+            data: [13, 56, 78],
+            backgroundColor: [
+              '#FF4D4F',
+              '#FAAD14',
+              '#1890FF'
+            ],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          },
+          cutout: '70%'
+        }
+      });
+    };
+    
+    // 初始化告警类型趋势图表
+    const initAlertTypeChart = () => {
+      const ctx = document.getElementById('alertTypeChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['6/10', '6/11', '6/12', '6/13', '6/14', '6/15'],
+          datasets: [
+            {
+              label: '账户风险',
+              data: [8, 12, 9, 15, 11, 7],
+              backgroundColor: '#165DFF'
+            },
+            {
+              label: '交易风险',
+              data: [15, 18, 12, 20, 17, 9],
+              backgroundColor: '#36CFC9'
+            },
+            {
+              label: '身份验证',
+              data: [5, 7, 9, 6, 8, 4],
+              backgroundColor: '#FAAD14'
+            },
+            {
+              label: '设备异常',
+              data: [3, 5, 4, 6, 5, 3],
+              backgroundColor: '#722ED1'
+            },
+            {
+              label: '行为异常',
+              data: [7, 6, 9, 8, 10, 5],
+              backgroundColor: '#EB0AA4'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 12,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          },
+          barPercentage: 0.6
+        }
+      });
+    };
+    
     // 事件详情展开/折叠功能
     const setupEventToggle = () => {
       const eventHeaders = document.querySelectorAll('.event-header');
@@ -771,7 +466,6 @@
       userMenuBtn.addEventListener('click', () => {
         userMenu.classList.toggle('hidden');
         // 关闭其他菜单
-        document.getElementById('refreshIntervalMenu').classList.add('hidden');
         document.getElementById('mobileMenu').classList.add('hidden');
       });
       
@@ -780,43 +474,6 @@
         if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
           userMenu.classList.add('hidden');
         }
-      });
-    };
-    
-    // 刷新间隔菜单
-    const setupRefreshIntervalMenu = () => {
-      const refreshBtn = document.getElementById('refreshIntervalBtn');
-      const refreshMenu = document.getElementById('refreshIntervalMenu');
-      const intervalOptions = refreshMenu.querySelectorAll('a');
-      const intervalDisplay = refreshBtn.querySelector('span');
-      
-      let currentInterval = 10; // 默认10秒
-      
-      refreshBtn.addEventListener('click', () => {
-        refreshMenu.classList.toggle('hidden');
-        // 关闭其他菜单
-        document.getElementById('userMenu').classList.add('hidden');
-        document.getElementById('mobileMenu').classList.add('hidden');
-      });
-      
-      // 点击外部关闭菜单
-      document.addEventListener('click', (e) => {
-        if (!refreshBtn.contains(e.target) && !refreshMenu.contains(e.target)) {
-          refreshMenu.classList.add('hidden');
-        }
-      });
-      
-      // 选择刷新间隔
-      intervalOptions.forEach(option => {
-        option.addEventListener('click', (e) => {
-          e.preventDefault();
-          currentInterval = option.getAttribute('data-interval');
-          intervalDisplay.textContent = currentInterval === '60' ? '1分钟' : `${currentInterval}秒`;
-          refreshMenu.classList.add('hidden');
-          
-          // 更新自动刷新计时器
-          setupAutoRefresh(currentInterval);
-        });
       });
     };
     
@@ -829,7 +486,6 @@
         mobileMenu.classList.toggle('hidden');
         // 关闭其他菜单
         document.getElementById('userMenu').classList.add('hidden');
-        document.getElementById('refreshIntervalMenu').classList.add('hidden');
       });
     };
     
@@ -866,9 +522,10 @@
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', () => {
       initRiskTrendChart();
+      initAlertLevelChart();
+      initAlertTypeChart();
       setupEventToggle();
       setupUserMenu();
-      setupRefreshIntervalMenu();
       setupMobileMenu();
       
       // 默认设置10秒自动刷新
