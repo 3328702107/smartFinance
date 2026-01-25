@@ -40,3 +40,15 @@ class RiskAnalysisRecommendation(db.Model):
     priority = db.Column(db.Enum("高", "中", "低"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EventResponsibility(db.Model):
+    """事件责任追溯信息（节点/边/分析结构以 JSON 存储）"""
+    __tablename__ = "event_responsibility"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    event_id = db.Column(db.String(32), db.ForeignKey("risk_events.event_id"))
+    nodes = db.Column(db.JSON)
+    edges = db.Column(db.JSON)
+    analysis = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

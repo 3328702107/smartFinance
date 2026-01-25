@@ -5,7 +5,7 @@ from flask import Blueprint, request, Response
 
 from core.database import db
 from models.risk import RiskEvent, EventTimeline, Alert
-from models.analysis import RelatedUser, HandlingRecord, RiskAnalysisRecommendation
+from models.analysis import RelatedUser, HandlingRecord, RiskAnalysisRecommendation, EventResponsibility
 from models.device import Device
 from models.transaction import FinancialTransaction
 from models.user import User
@@ -355,10 +355,10 @@ def event_transactions(event_id):
                 "typeName": t.category,
                 "amount": amount,
                 "currency": t.currency,
-                "fromAccount": None,
-                "fromAccountName": None,
-                "toAccount": None,
-                "toAccountName": None,
+                "fromAccount": getattr(t, "from_account", None),
+                "fromAccountName": getattr(t, "from_account_name", None),
+                "toAccount": getattr(t, "to_account", None),
+                "toAccountName": getattr(t, "to_account_name", None),
                 "status": status_code,
                 "statusName": t.status,
                 "time": _dt(t.transaction_time),
@@ -374,18 +374,16 @@ def event_transactions(event_id):
 def event_responsibility(event_id):
     """7.7 获取责任追溯信息。"""
     event = RiskEvent.query.get_or_404(event_id)
-
-    nodes = [
+    # 默认结构（用于没有配置 DB 记录时的回退）
+    default_nodes = [
         {"id": 1, "label": "黑客攻击", "type": "attacker", "level": "high"},
         {"id": 2, "label": "用户操作", "type": "user", "level": "medium"},
         {"id": 3, "label": "系统防护", "type": "system", "level": "low"},
     ]
-
-    edges = [
+    default_edges = [
         {"from": 1, "to": 2, "value": 5, "label": "导致"},
     ]
-
-    analysis = [
+    default_analysis = [
         {
             "type": "attacker",
             "typeName": "主要责任主体",
@@ -402,6 +400,12 @@ def event_responsibility(event_id):
             "description": "风控系统已拦截部分风险，仍可进一步优化策略。",
         },
     ]
+
+    resp = EventResponsibility.query.filter_by(event_id=event.event_id).first()
+
+    nodes = resp.nodes if resp and resp.nodes else default_nodes
+    edges = resp.edges if resp and resp.edges else default_edges
+    analysis = resp.analysis if resp and resp.analysis else default_analysis
 
     return api_response(data={"nodes": nodes, "edges": edges, "analysis": analysis})
 

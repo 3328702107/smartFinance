@@ -187,6 +187,10 @@ CREATE TABLE `financial_transactions`  (
   `ip_address` varchar(39) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `device_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `from_account` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `from_account_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `to_account` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `to_account_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   PRIMARY KEY (`tx_id`) USING BTREE,
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   INDEX `device_id`(`device_id` ASC) USING BTREE,
@@ -195,11 +199,10 @@ CREATE TABLE `financial_transactions`  (
   CONSTRAINT `financial_transactions_ibfk_2` FOREIGN KEY (`device_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
--- ----------------------------
 -- Records of financial_transactions
 -- ----------------------------
-INSERT INTO `financial_transactions` VALUES ('tx_test_001', 'u_test_001', 500.00, 'CNY', '2026-01-13 14:08:15', '成功', '消费', '1.1.1.1', 'd_test_001', '2026-01-13 14:38:15');
-INSERT INTO `financial_transactions` VALUES ('tx_test_002', 'u_test_001', 20000.00, 'CNY', '2026-01-13 14:33:15', '成功', '转账', '3.3.3.3', 'd_test_001', '2026-01-13 14:38:15');
+INSERT INTO `financial_transactions` (`tx_id`, `user_id`, `amount`, `currency`, `transaction_time`, `status`, `category`, `ip_address`, `device_id`, `created_at`, `from_account`, `from_account_name`, `to_account`, `to_account_name`) VALUES ('tx_test_001', 'u_test_001', 500.00, 'CNY', '2026-01-13 14:08:15', '成功', '消费', '1.1.1.1', 'd_test_001', '2026-01-13 14:38:15', '622200******0001', 'Alice 储蓄卡', '商户_001', '便利店');
+INSERT INTO `financial_transactions` (`tx_id`, `user_id`, `amount`, `currency`, `transaction_time`, `status`, `category`, `ip_address`, `device_id`, `created_at`, `from_account`, `from_account_name`, `to_account`, `to_account_name`) VALUES ('tx_test_002', 'u_test_001', 20000.00, 'CNY', '2026-01-13 14:33:15', '成功', '转账', '3.3.3.3', 'd_test_001', '2026-01-13 14:38:15', '622200******0001', 'Alice 储蓄卡', '622200******9999', '对方账户');
 
 -- ----------------------------
 -- Table structure for handling_records
@@ -301,6 +304,33 @@ CREATE TABLE `risk_analysis_recommendations`  (
 -- Records of risk_analysis_recommendations
 -- ----------------------------
 INSERT INTO `risk_analysis_recommendations` VALUES (1, 'ev_test_001', '该用户近期存在多次异地登录和大额交易，疑似账户被盗用。', '建议立即冻结账户，联系用户进行身份核验。', '高', '2026-01-13 14:38:39', '2026-01-13 14:38:39');
+
+-- ----------------------------
+-- Table structure for event_responsibility
+-- ----------------------------
+DROP TABLE IF EXISTS `event_responsibility`;
+CREATE TABLE `event_responsibility`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `event_id` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `nodes` json NULL,
+  `edges` json NULL,
+  `analysis` json NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `event_id`(`event_id` ASC) USING BTREE,
+  CONSTRAINT `event_responsibility_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `risk_events` (`event_id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of event_responsibility
+-- ----------------------------
+INSERT INTO `event_responsibility` (`id`, `event_id`, `nodes`, `edges`, `analysis`, `created_at`) VALUES
+(1,
+ 'ev_test_001',
+ '[{"id":1,"label":"黑客攻击","type":"attacker","level":"high"},{"id":2,"label":"用户操作","type":"user","level":"medium"},{"id":3,"label":"系统防护","type":"system","level":"low"}]',
+ '[{"from":1,"to":2,"value":5,"label":"导致"}]',
+ '[{"type":"attacker","typeName":"主要责任主体","description":"疑似恶意攻击者利用账户信息尝试进行异常操作。"},{"type":"user","typeName":"用户责任","description":"可能存在密码泄露或安全意识不足的情况。"},{"type":"system","typeName":"系统防护","description":"风控系统已拦截部分风险，仍可进一步优化策略。"}]',
+ '2026-01-13 14:38:40');
 
 -- ----------------------------
 -- Table structure for risk_events

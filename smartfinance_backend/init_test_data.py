@@ -8,7 +8,7 @@ from models.data import LoginLog, DataSource, DataQualityIssue
 from models.device import Device
 from models.transaction import FinancialTransaction
 from models.risk import RiskEvent, EventTimeline, Alert
-from models.analysis import RelatedUser, RiskAnalysisRecommendation
+from models.analysis import RelatedUser, RiskAnalysisRecommendation, EventResponsibility
 
 app = create_app("dev")
 
@@ -310,6 +310,10 @@ def main():
             status="成功",
             category="消费",
             ip_address="1.1.1.1",
+            from_account="622200******0001",
+            from_account_name="Alice 储蓄卡",
+            to_account="商户_001",
+            to_account_name="便利店",
         )
         tx2 = FinancialTransaction(
             tx_id="tx_test_002",
@@ -321,6 +325,10 @@ def main():
             status="成功",
             category="转账",
             ip_address="3.3.3.3",
+            from_account="622200******0001",
+            from_account_name="Alice 储蓄卡",
+            to_account="622200******9999",
+            to_account_name="对方账户",
         )
         db.session.add_all([tx1, tx2])
         db.session.commit()
@@ -404,6 +412,37 @@ def main():
             priority="高",
         )
         db.session.add(rec1)
+
+        # 责任追溯（与接口文档/示例结构保持一致）
+        resp = EventResponsibility(
+            event_id=ev_id,
+            nodes=[
+                {"id": 1, "label": "黑客攻击", "type": "attacker", "level": "high"},
+                {"id": 2, "label": "用户操作", "type": "user", "level": "medium"},
+                {"id": 3, "label": "系统防护", "type": "system", "level": "low"},
+            ],
+            edges=[
+                {"from": 1, "to": 2, "value": 5, "label": "导致"},
+            ],
+            analysis=[
+                {
+                    "type": "attacker",
+                    "typeName": "主要责任主体",
+                    "description": "疑似恶意攻击者利用账户信息尝试进行异常操作。",
+                },
+                {
+                    "type": "user",
+                    "typeName": "用户责任",
+                    "description": "可能存在密码泄露或安全意识不足的情况。",
+                },
+                {
+                    "type": "system",
+                    "typeName": "系统防护",
+                    "description": "风控系统已拦截部分风险，仍可进一步优化策略。",
+                },
+            ],
+        )
+        db.session.add(resp)
 
         db.session.commit()
 

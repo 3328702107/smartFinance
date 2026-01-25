@@ -18,3 +18,8 @@ class FinancialTransaction(db.Model):
     ip_address = db.Column(db.String(39))
     device_id = db.Column(db.String(64), db.ForeignKey("devices.device_id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # 资金方向相关账户信息
+    from_account = db.Column(db.String(50))
+    from_account_name = db.Column(db.String(100))
+    to_account = db.Column(db.String(50))
+    to_account_name = db.Column(db.String(100))
