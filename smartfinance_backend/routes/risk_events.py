@@ -39,12 +39,13 @@ def list_events():
             "created_at": ev.created_at.isoformat() if ev.created_at else None,
         }
 
-    return jsonify({
-        "items": [to_dict(ev) for ev in pagination.items],
-        "page": page,
-        "size": size,
-        "total": pagination.total
-    })
+    from utils.response import paginated_response
+    return paginated_response(
+        items=[to_dict(ev) for ev in pagination.items],
+        total=pagination.total,
+        page=page,
+        page_size=size
+    )
 
 
 @bp.get("/stats")
@@ -106,14 +107,13 @@ def event_stats():
             }
         )
 
-    return jsonify(
-        {
-            "total": total,
-            "by_level": by_level,
-            "by_status": by_status,
-            "trend_24h": trend,
-        }
-    )
+    from utils.response import api_response
+    return api_response(data={
+        "total": total,
+        "by_level": by_level,
+        "by_status": by_status,
+        "trend_24h": trend,
+    })
 
 
 @bp.get("/<event_id>")
@@ -133,7 +133,8 @@ def get_event_detail(event_id):
     def _dt(v):
         return v.isoformat() if v else None
 
-    return jsonify({
+    from utils.response import api_response
+    return api_response(data={
         "event": {
             "event_id": ev.event_id,
             "event_type": ev.event_type,
@@ -215,13 +216,14 @@ def get_event_detail(event_id):
 def update_event_status(event_id):
     data = request.get_json() or {}
     new_status = data.get("status")
+    from utils.response import api_response
     if new_status not in ["待处理", "处理中", "已解决", "已忽略"]:
-        return jsonify({"message": "invalid status"}), 400
+        return api_response(code=400, message="invalid status")
 
     ev = RiskEvent.query.get_or_404(event_id)
     ev.status = new_status
     db.session.commit()
-    return jsonify({"message": "ok"})
+    return api_response(message="ok")
 
 
 @bp.get("/<event_id>/graph")
@@ -258,4 +260,5 @@ def get_event_graph(event_id):
             add_node(ru_user.user_id, "user", ru_user.username)
             add_edge(ev.event_id, ru_user.user_id, ru.relationship_type)
 
-    return jsonify({"nodes": nodes, "edges": edges})
+    from utils.response import api_response
+    return api_response(data={"nodes": nodes, "edges": edges})

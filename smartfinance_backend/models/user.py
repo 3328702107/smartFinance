@@ -10,8 +10,12 @@ class User(db.Model):
 
     user_id = db.Column(db.String(32), primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(100))  # 姓名
     phone = db.Column(db.String(20))
     email = db.Column(db.String(100))
+    gender = db.Column(db.Enum("男", "女", "未知"))  # 性别
+    birthday = db.Column(db.Date)  # 生日
+    bio = db.Column(db.Text)  # 简介
     avatar = db.Column(db.String(255))
     department = db.Column(db.String(100))
     role = db.Column(db.String(50))

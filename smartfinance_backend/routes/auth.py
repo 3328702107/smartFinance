@@ -159,3 +159,37 @@ def change_password():
         return api_response(message="密码修改成功")
     except Exception as e:
         return api_response(code=400, message=str(e))
+
+
+@bp.post("/send-verification-code")
+def send_verification_code():
+    """发送验证码（忘记密码）"""
+    data = request.get_json() or {}
+    contact = data.get("contact")
+    if not contact:
+        return api_response(code=400, message="contact required")
+
+    try:
+        expires_in = AuthService.send_verification_code(contact)
+        return api_response(message="验证码已发送", data={"expiresIn": expires_in})
+    except Exception as e:
+        return api_response(code=400, message=str(e))
+
+
+@bp.post("/reset-password")
+def reset_password():
+    """验证验证码并重置密码"""
+    data = request.get_json() or {}
+    contact = data.get("contact")
+    code = data.get("verificationCode")
+    new_pwd = data.get("newPassword")
+
+    if not contact or not code or not new_pwd:
+        return api_response(code=400, message="contact, verificationCode and newPassword required")
+
+    try:
+        AuthService.reset_password(contact, code, new_pwd)
+        return api_response(message="密码重置成功")
+    except Exception as e:
+        return api_response(code=400, message=str(e))
+

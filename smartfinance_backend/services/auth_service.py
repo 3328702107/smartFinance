@@ -139,3 +139,40 @@ class AuthService:
 
         acc.password_hash = generate_password_hash(new_password)
         db.session.commit()
+
+    # 用于模拟验证码存储（实际生产中应使用 Redis 等）
+    _verification_codes = {}
+
+    @classmethod
+    def send_verification_code(cls, contact: str) -> int:
+        """发送验证码（模拟实现）"""
+        import random
+        code = str(random.randint(100000, 999999))
+        cls._verification_codes[contact] = code
+        # 实际应发送短信或邮件
+        return 600  # 有效期秒数
+
+    @classmethod
+    def reset_password(cls, contact: str, code: str, new_password: str):
+        """验证验证码并重置密码"""
+        stored_code = cls._verification_codes.get(contact)
+        if not stored_code or stored_code != code:
+            raise ValidationError("verification code invalid or expired")
+
+        # 根据 contact 查找用户（手机或邮箱）
+        user = User.query.filter(
+            db.or_(User.phone == contact, User.email == contact)
+        ).first()
+        if not user:
+            raise NotFoundError("user not found")
+
+        acc = AuthAccount.query.filter_by(user_id=user.user_id).first()
+        if not acc:
+            raise NotFoundError("auth account not found")
+
+        acc.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+
+        # 清除验证码
+        cls._verification_codes.pop(contact, None)
+

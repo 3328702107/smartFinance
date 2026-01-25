@@ -88,3 +88,38 @@ class RiskService:
         db.session.commit()
 
         return event_id
+
+    @staticmethod
+    def handle_risk_event(event_id: str, action: str, note: str = None):
+        """处理风险事件"""
+        from models.analysis import HandlingRecord
+
+        event = RiskEvent.query.get(event_id)
+        if not event:
+            raise ValidationError("event not found")
+
+        # 根据 action 更新状态
+        action_status_map = {
+            "freeze": ("已解决", "冻结账户"),
+            "send_verification": ("处理中", "发送验证码"),
+            "mark_resolved": ("已解决", "标记已处理"),
+            "ignore": ("已忽略", "忽略"),
+        }
+
+        if action in action_status_map:
+            new_status, action_name = action_status_map[action]
+            event.status = new_status
+        else:
+            action_name = action or "处理"
+
+        # 添加处理记录
+        record = HandlingRecord(
+            event_id=event_id,
+            operator="系统",
+            action=action_name,
+            action_time=datetime.utcnow(),
+            comment=note,
+        )
+        db.session.add(record)
+        db.session.commit()
+

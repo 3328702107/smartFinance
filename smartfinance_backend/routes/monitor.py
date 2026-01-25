@@ -199,3 +199,22 @@ def monitor_risk_event_detail(event_id):
         }
 
     return api_response(data=data)
+
+
+@bp.post("/risk-events/<event_id>/handle")
+def handle_risk_event(event_id):
+    """处理风险事件，对应文档 4.5"""
+    from services.risk_service import RiskService
+
+    data = request.get_json() or {}
+    action = data.get("action")
+    note = data.get("note")
+
+    if not action:
+        return api_response(code=400, message="action required")
+
+    try:
+        RiskService.handle_risk_event(event_id, action, note)
+        return api_response(message="处理成功")
+    except Exception as e:
+        return api_response(code=400, message=str(e))

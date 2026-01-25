@@ -9,18 +9,22 @@ bp = Blueprint("data_sources", __name__, url_prefix="/api/data_sources")
 def list_sources():
     sources = DataSource.query.all()
     return api_response(
-        data=[
-            {
-                "source_id": s.source_id,
-                "source_name": s.source_name,
-                "source_type": s.source_type,
-                "status": s.status,
-                "last_sync_time": s.last_sync_time.isoformat() if s.last_sync_time else None,
-                "sync_progress": float(s.sync_progress) if s.sync_progress is not None else None,
-                "error_count": s.error_count,
-            }
-            for s in sources
-        ]
+        data={
+            "list": [
+                {
+                    "id": s.source_id,
+                    "name": s.source_name,
+                    "type": s.source_type,
+                    "status": s.status,
+                    "lastSyncTime": s.last_sync_time.isoformat() if s.last_sync_time else None,
+                    "progress": float(s.sync_progress) if s.sync_progress is not None else None,
+                    "errorCount": s.error_count,
+                    # 补充文档可能需要的字段
+                    "connection": s.connection_url,
+                }
+                for s in sources
+            ]
+        }
     )
 
 

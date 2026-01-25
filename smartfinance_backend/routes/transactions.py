@@ -31,13 +31,14 @@ def ingest_transaction():
     device_id = data.get("device_id")
     ip = data.get("ip_address")
 
+    from utils.response import api_response
     if not user_id or amount is None:
-        return jsonify({"message": "user_id and amount required"}), 400
+        return api_response(code=400, message="user_id and amount required")
 
     # 校验用户是否存在，避免违反 financial_transactions.user_id 外键约束
     user = User.query.get(user_id)
     if not user:
-        return jsonify({"message": "user not found"}), 400
+        return api_response(code=400, message="user not found")
 
     tx_id = data.get("tx_id") or uuid.uuid4().hex[:32]
     now = datetime.utcnow()
@@ -148,7 +149,8 @@ def ingest_transaction():
 
     db.session.commit()
 
-    return jsonify({
+    from utils.response import api_response
+    return api_response(data={
         "tx_id": tx_id,
         "event_id": event_id,
         "risk_score": score,
