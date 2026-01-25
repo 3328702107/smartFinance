@@ -12,11 +12,16 @@ class DataSource(db.Model):
     source_name = db.Column(db.String(100), nullable=False)
     source_type = db.Column(db.Enum("数据库", "API", "文件", "消息队列"))
     connection_url = db.Column(db.String(255))
+    # 数据源运行状态（健康）
     status = db.Column(db.Enum("正常", "异常", "中断"))
     last_sync_time = db.Column(db.DateTime)
     sync_progress = db.Column(db.Numeric(5, 2))
     error_count = db.Column(db.Integer, default=0)
     last_error_message = db.Column(db.Text)
+    # 采集相关实时指标
+    collection_status = db.Column(db.Enum("running", "stopped", "paused"), default="running")
+    today_collected = db.Column(db.Integer, default=0)
+    estimated_completion = db.Column(db.String(8))  # HH:mm
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

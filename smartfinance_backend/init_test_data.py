@@ -88,16 +88,84 @@ def main():
         db.session.add_all([u1, u2, u3, u4])
         db.session.commit()
 
-        # 数据源
-        s1 = DataSource(
+        # 数据源（丰富一些用于前端展示）
+        # 交易数据中心
+        s_trade_center = DataSource(
+            source_id="src_trade_center",
+            source_name="交易数据中心",
+            source_type="数据库",
+            connection_url="db-trade-01.internal",
+            status="正常",
+            last_sync_time=now - timedelta(minutes=5),
+            sync_progress=78.0,
+            collection_status="running",
+            today_collected=148_562,
+            estimated_completion="14:45",
+        )
+        # 用户行为分析平台
+        s_behavior = DataSource(
+            source_id="src_user_behavior",
+            source_name="用户行为分析平台",
+            source_type="API",
+            connection_url="api-user-behavior.vpc",
+            status="正常",
+            last_sync_time=now - timedelta(minutes=10),
+            sync_progress=45.0,
+            collection_status="running",
+            today_collected=326_891,
+            estimated_completion="15:30",
+        )
+        # 图像存储服务
+        s_image = DataSource(
+            source_id="src_image_storage",
+            source_name="图像存储服务",
+            source_type="文件",
+            connection_url="img-storage-02",
+            status="异常",
+            last_sync_time=now - timedelta(minutes=20),
+            sync_progress=35.0,
+            error_count=5,
+            last_error_message="连接超时，已尝试 5 次重连",
+            collection_status="stopped",
+            today_collected=8_452,
+        )
+        # 设备指纹系统
+        s_device = DataSource(
+            source_id="src_device_fingerprint",
+            source_name="设备指纹系统",
+            source_type="API",
+            connection_url="device-fingerprint-service",
+            status="正常",
+            last_sync_time=now - timedelta(minutes=3),
+            sync_progress=92.0,
+            collection_status="running",
+            today_collected=67_321,
+            estimated_completion="14:40",
+        )
+        # 第三方信用评估接口
+        s_credit = DataSource(
+            source_id="src_third_party_credit",
+            source_name="第三方信用评估接口",
+            source_type="API",
+            connection_url="api.thirdparty-credit.com",
+            status="正常",
+            last_sync_time=now - timedelta(minutes=15),
+            sync_progress=23.0,
+            collection_status="running",
+            today_collected=12_456,
+            estimated_completion="16:10",
+        )
+        # 兼容其它示例中使用的两个数据源 ID
+        s_tx = DataSource(
             source_id="src_tx",
             source_name="交易日志源",
             source_type="数据库",
             status="正常",
             last_sync_time=now,
             sync_progress=100.0,
+            collection_status="running",
         )
-        s2 = DataSource(
+        s_login = DataSource(
             source_id="src_login",
             source_name="登录日志源",
             source_type="API",
@@ -106,8 +174,9 @@ def main():
             sync_progress=80.0,
             error_count=3,
             last_error_message="网络超时",
+            collection_status="running",
         )
-        db.session.add_all([s1, s2])
+        db.session.add_all([s_trade_center, s_behavior, s_image, s_device, s_credit, s_tx, s_login])
         db.session.commit()
 
         # ========== 第二步：插入依赖 User 的数据 ==========
@@ -147,15 +216,62 @@ def main():
 
         # ========== 第三步：插入依赖 DataSource 的数据 ==========
 
-        q1 = DataQualityIssue(
-            source_id="src_login",
-            issue_type="缺失字段",
-            description="部分登录记录缺失地理位置信息",
-            affected_records_count=50,
-            severity="中",
-            status="未处理",
+        # 为不同数据源造一些数据质量问题，数量与原型示例基本一致：
+        # 交易数据中心：12 个；行为平台：5 个；图像存储：0 个；设备指纹：0 个；第三方信用：39 个
+        quality_issues = []
+
+        # 交易数据中心：12 个问题（混合多种类型）
+        for i in range(12):
+            quality_issues.append(
+                DataQualityIssue(
+                    source_id="src_trade_center",
+                    issue_type=["缺失字段", "格式错误", "值异常", "数据不一致"][i % 4],
+                    description="交易明细字段存在缺失或异常",
+                    affected_records_count=100 + i * 5,
+                    severity=["中", "低", "高"][i % 3],
+                    status="未处理",
+                )
+            )
+
+        # 用户行为分析平台：5 个问题
+        for i in range(5):
+            quality_issues.append(
+                DataQualityIssue(
+                    source_id="src_user_behavior",
+                    issue_type="值异常",
+                    description="用户会话时长出现异常尖刺",
+                    affected_records_count=200 + i * 10,
+                    severity="中",
+                    status="未处理",
+                )
+            )
+
+        # 第三方信用评估接口：39 个格式问题
+        for i in range(39):
+            quality_issues.append(
+                DataQualityIssue(
+                    source_id="src_third_party_credit",
+                    issue_type="格式错误",
+                    description="返回 JSON 字段缺失或类型错误",
+                    affected_records_count=20 + i,
+                    severity="低",
+                    status="未处理",
+                )
+            )
+
+        # 登录日志源：1 个中等问题（沿用原有示例）
+        quality_issues.append(
+            DataQualityIssue(
+                source_id="src_login",
+                issue_type="缺失字段",
+                description="部分登录记录缺失地理位置信息",
+                affected_records_count=50,
+                severity="中",
+                status="未处理",
+            )
         )
-        db.session.add(q1)
+
+        db.session.add_all(quality_issues)
         db.session.commit()
 
         # ========== 第四步：插入依赖 User 和 Device 的数据 ==========

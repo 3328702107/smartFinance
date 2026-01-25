@@ -21,6 +21,13 @@ def list_sources():
                     "errorCount": s.error_count,
                     # 补充文档可能需要的字段
                     "connection": s.connection_url,
+                    # 采集状态与采集数等增强字段
+                    "collectionStatus": (s.collection_status or ("running" if s.status == "正常" else "stopped")),
+                    "collectionStatusName": "采集进行中" if (s.collection_status or ("running" if s.status == "正常" else "stopped")) == "running" else "采集已停止",
+                    "todayCollected": int(s.today_collected or 0),
+                    "estimatedCompletion": s.estimated_completion,
+                    "qualityIssuesCount": DataQualityIssue.query.filter_by(source_id=s.source_id).count(),
+                    "errorMessage": s.last_error_message,
                 }
                 for s in sources
             ]

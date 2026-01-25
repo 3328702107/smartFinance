@@ -105,6 +105,9 @@ CREATE TABLE `data_sources`  (
   `sync_progress` decimal(5, 2) NULL DEFAULT 0.00,
   `error_count` int NULL DEFAULT 0,
   `last_error_message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `collection_status` enum('running','stopped','paused') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'running',
+  `today_collected` int NULL DEFAULT 0,
+  `estimated_completion` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`source_id`) USING BTREE
@@ -113,8 +116,8 @@ CREATE TABLE `data_sources`  (
 -- ----------------------------
 -- Records of data_sources
 -- ----------------------------
-INSERT INTO `data_sources` VALUES ('src_login', '登录日志源', 'API', NULL, '异常', '2026-01-13 11:37:58', 80.00, 3, '网络超时', '2026-01-13 14:37:58', '2026-01-13 14:37:58');
-INSERT INTO `data_sources` VALUES ('src_tx', '交易日志源', '数据库', NULL, '正常', '2026-01-13 14:37:58', 100.00, 0, NULL, '2026-01-13 14:37:58', '2026-01-13 14:37:58');
+INSERT INTO `data_sources` (`source_id`, `source_name`, `source_type`, `connection_url`, `status`, `last_sync_time`, `sync_progress`, `error_count`, `last_error_message`, `created_at`, `updated_at`) VALUES ('src_login', '登录日志源', 'API', NULL, '异常', '2026-01-13 11:37:58', 80.00, 3, '网络超时', '2026-01-13 14:37:58', '2026-01-13 14:37:58');
+INSERT INTO `data_sources` (`source_id`, `source_name`, `source_type`, `connection_url`, `status`, `last_sync_time`, `sync_progress`, `error_count`, `last_error_message`, `created_at`, `updated_at`) VALUES ('src_tx', '交易日志源', '数据库', NULL, '正常', '2026-01-13 14:37:58', 100.00, 0, NULL, '2026-01-13 14:37:58', '2026-01-13 14:37:58');
 
 -- ----------------------------
 -- Table structure for devices

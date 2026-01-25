@@ -41,9 +41,8 @@ def list_data_sources():
     pagination = query.paginate(page=page, per_page=page_size, error_out=False)
 
     def to_item(s: DataSource):
-        # 简单推导采集状态：正常视为 running，否则 stopped
-        collection_status = "running" if s.status == "正常" else "stopped"
-        # 今日采集量、预计完成时间目前无法从表中推导，这里先返回占位
+        # 采集状态优先使用表中的 collection_status，没有则根据运行状态推导
+        collection_status = s.collection_status or ("running" if s.status == "正常" else "stopped")
         quality_issues_count = DataQualityIssue.query.filter_by(source_id=s.source_id).count()
         return {
             "id": s.source_id,
@@ -56,8 +55,8 @@ def list_data_sources():
             "collectionStatusName": "采集进行中" if collection_status == "running" else "已停止",
             "lastSyncTime": s.last_sync_time.strftime("%Y-%m-%d %H:%M:%S") if s.last_sync_time else None,
             "progress": int(s.sync_progress or 0),
-            "todayCollected": 0,
-            "estimatedCompletion": None,
+            "todayCollected": int(s.today_collected or 0),
+            "estimatedCompletion": s.estimated_completion,
             "qualityIssuesCount": quality_issues_count,
             "errorMessage": s.last_error_message,
         }
@@ -352,3 +351,6 @@ def _map_issue_type_name(code: str) -> str:
         "inconsistent": "数据不一致",
     }
     return mapping.get(code, code)
+
+
+    # 采集指标现在完全来源于数据库字段，不再在路由层做演示计算
