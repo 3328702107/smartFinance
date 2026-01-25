@@ -41,26 +41,51 @@ def main():
 
         # ========== 第一步：插入基础数据（无外键依赖） ==========
 
-        # 用户
+        # 用户（与 smartfinance.sql 中示例数据对齐）
+        # 管理/测试账号 1
         u1 = User(
+            user_id="58b84e778dff4ea48413c2a3b2ca1f59",
+            username="test_user1",
+            phone="13800000010",
+            email="test_user1@example.com",
+            status="正常",
+            account_level="普通",
+            registration_time=datetime(2026, 1, 13, 7, 41, 18),
+        )
+        # 管理/测试账号 2
+        u2 = User(
+            user_id="f3eb5f1e21a5432487c1f48918e4f36f",
+            username="adon",
+            phone="13800000000",
+            email="alice@example.com",
+            department="风险管理部",
+            role="manager",
+            employee_id="EMP-2023001",
+            status="正常",
+            account_level="普通",
+            registration_time=datetime(2026, 1, 20, 9, 7, 31),
+        )
+        # 业务测试用户 1
+        u3 = User(
             user_id="u_test_001",
             username="alice",
             phone="13800000001",
             email="alice@test.com",
             status="正常",
             account_level="普通",
-            registration_time=now - timedelta(days=100),
+            registration_time=datetime(2025, 10, 5, 14, 37, 47),
         )
-        u2 = User(
+        # 业务测试用户 2
+        u4 = User(
             user_id="u_test_002",
             username="bob",
             phone="13800000002",
             email="bob@test.com",
             status="正常",
             account_level="VIP",
-            registration_time=now - timedelta(days=200),
+            registration_time=datetime(2025, 6, 27, 14, 37, 47),
         )
-        db.session.add_all([u1, u2])
+        db.session.add_all([u1, u2, u3, u4])
         db.session.commit()
 
         # 数据源
@@ -89,16 +114,12 @@ def main():
 
         from werkzeug.security import generate_password_hash
 
-        # 认证账户（密码）
-        a1 = AuthAccount(
-            user_id="u_test_001",
-            password_hash=generate_password_hash("123456")
-        )
-        a2 = AuthAccount(
-            user_id="u_test_002",
-            password_hash=generate_password_hash("123456")
-        )
-        db.session.add_all([a1, a2])
+        # 认证账户（密码），为 4 个用户都生成默认密码 123456
+        a1 = AuthAccount(user_id="58b84e778dff4ea48413c2a3b2ca1f59", password_hash=generate_password_hash("123456"))
+        a2 = AuthAccount(user_id="f3eb5f1e21a5432487c1f48918e4f36f", password_hash=generate_password_hash("123456"))
+        a3 = AuthAccount(user_id="u_test_001", password_hash=generate_password_hash("123456"))
+        a4 = AuthAccount(user_id="u_test_002", password_hash=generate_password_hash("123456"))
+        db.session.add_all([a1, a2, a3, a4])
 
         # 设备
         d1 = Device(

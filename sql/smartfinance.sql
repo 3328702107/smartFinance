@@ -362,9 +362,9 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES ('58b84e778dff4ea48413c2a3b2ca1f59', 'test_user1', '13800000010', 'test_user1@example.com', NULL, NULL, NULL, NULL, '2026-01-13 07:41:18', '普通', '正常', '2026-01-13 07:41:18', '2026-01-13 07:41:18');
-INSERT INTO `users` VALUES ('f3eb5f1e21a5432487c1f48918e4f36f', 'adon', '13800000000', 'alice@example.com', NULL, '风险管理部', 'manager', 'EMP-2023001', '2026-01-20 09:07:31', '普通', '正常', '2026-01-20 09:07:31', '2026-01-20 17:22:23');
-INSERT INTO `users` VALUES ('u_test_001', 'alice', '13800000001', 'alice@test.com', NULL, NULL, NULL, NULL, '2025-10-05 14:37:47', '普通', '正常', '2026-01-13 14:37:47', '2026-01-13 14:37:47');
-INSERT INTO `users` VALUES ('u_test_002', 'bob', '13800000002', 'bob@test.com', NULL, NULL, NULL, NULL, '2025-06-27 14:37:47', 'VIP', '正常', '2026-01-13 14:37:47', '2026-01-13 14:37:47');
+INSERT INTO `users` (`user_id`, `username`, `phone`, `email`, `registration_time`, `account_level`, `status`, `created_at`, `updated_at`) VALUES ('58b84e778dff4ea48413c2a3b2ca1f59', 'test_user1', '13800000010', 'test_user1@example.com', '2026-01-13 07:41:18', '普通', '正常', '2026-01-13 07:41:18', '2026-01-13 07:41:18');
+INSERT INTO `users` (`user_id`, `username`, `phone`, `email`, `department`, `role`, `employee_id`, `registration_time`, `account_level`, `status`, `created_at`, `updated_at`) VALUES ('f3eb5f1e21a5432487c1f48918e4f36f', 'adon', '13800000000', 'alice@example.com', '风险管理部', 'manager', 'EMP-2023001', '2026-01-20 09:07:31', '普通', '正常', '2026-01-20 09:07:31', '2026-01-20 17:22:23');
+INSERT INTO `users` (`user_id`, `username`, `phone`, `email`, `registration_time`, `account_level`, `status`, `created_at`, `updated_at`) VALUES ('u_test_001', 'alice', '13800000001', 'alice@test.com', '2025-10-05 14:37:47', '普通', '正常', '2026-01-13 14:37:47', '2026-01-13 14:37:47');
+INSERT INTO `users` (`user_id`, `username`, `phone`, `email`, `registration_time`, `account_level`, `status`, `created_at`, `updated_at`) VALUES ('u_test_002', 'bob', '13800000002', 'bob@test.com', '2025-06-27 14:37:47', 'VIP', '正常', '2026-01-13 14:37:47', '2026-01-13 14:37:47');
 
 SET FOREIGN_KEY_CHECKS = 1;
