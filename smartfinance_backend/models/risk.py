@@ -14,6 +14,8 @@ class RiskEvent(db.Model):
     score = db.Column(db.Integer, default=0)
     description = db.Column(db.Text)
     detection_time = db.Column(db.DateTime)
+    # 事件持续时长，格式例如 "2h 15m"，用于事件分析展示
+    duration = db.Column(db.String(20))
     status = db.Column(db.Enum("待处理", "处理中", "已解决", "已忽略"), default="待处理")
     user_id = db.Column(db.String(32), db.ForeignKey("users.user_id"))
     device_id = db.Column(db.String(64), db.ForeignKey("devices.device_id"))

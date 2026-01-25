@@ -313,6 +313,7 @@ CREATE TABLE `risk_events`  (
   `score` int NULL DEFAULT 0,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
   `detection_time` datetime NULL DEFAULT NULL,
+  `duration` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `status` enum('待处理','处理中','已解决','已忽略') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '待处理',
   `user_id` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `device_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
@@ -333,8 +334,8 @@ CREATE TABLE `risk_events`  (
 -- ----------------------------
 -- Records of risk_events
 -- ----------------------------
-INSERT INTO `risk_events` VALUES ('ev_test_001', '异常交易', '高', 90, '大额异地交易，短时间内多笔交易', '2026-01-13 14:34:20', '处理中', 'u_test_001', 'd_test_001', '3.3.3.3', '规则引擎', '个人', '2026-01-13 14:38:20', '2026-01-13 07:29:19');
-INSERT INTO `risk_events` VALUES ('ev_test_002', '设备异常', '中', 55, '绑定设备存在异常标记且近期更换频繁', '2026-01-13 14:18:44', '待处理', 'u_test_002', 'd_test_002', '2.2.2.2', '规则引擎', '个人', '2026-01-13 14:38:44', '2026-01-13 14:38:44');
+INSERT INTO `risk_events` VALUES ('ev_test_001', '异常交易', '高', 90, '大额异地交易，短时间内多笔交易', '2026-01-13 14:34:20', '2h 15m', '处理中', 'u_test_001', 'd_test_001', '3.3.3.3', '规则引擎', '个人', '2026-01-13 14:38:20', '2026-01-13 07:29:19');
+INSERT INTO `risk_events` VALUES ('ev_test_002', '设备异常', '中', 55, '绑定设备存在异常标记且近期更换频繁', '2026-01-13 14:18:44', NULL, '待处理', 'u_test_002', 'd_test_002', '2.2.2.2', '规则引擎', '个人', '2026-01-13 14:38:44', '2026-01-13 14:38:44');
 
 -- ----------------------------
 -- Table structure for users

@@ -6,7 +6,9 @@ from flask import Blueprint, request, Response
 from sqlalchemy import or_
 
 from core.database import db
-from models.data import DataSource, DataQualityIssue
+from models.data import DataSource, DataQualityIssue, LoginLog
+from models.transaction import FinancialTransaction
+from models.device import Device
 from utils.response import api_response, paginated_response
 
 bp = Blueprint("data_collection", __name__, url_prefix="/data-collection")
@@ -112,27 +114,51 @@ def data_source_status_distribution():
 # 6.4 获取数据采集趋势
 @bp.get("/collection-trend")
 def data_collection_trend():
+    # period 参数目前保留以兼容文档；这里统一按「最近 8 个整点」聚合
     _ = request.args.get("period", "today")
-    # 目前缺少逐小时采集量统计，这里返回一个结构正确的占位数据
+
     now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    start_base = now - timedelta(hours=7)
+
     labels = []
-    trade = []
-    behavior = []
-    device = []
+    trade_data = []
+    behavior_data = []
+    device_data = []
+
     for i in range(8):
-        t = (now - timedelta(hours=7 - i)).strftime("%H:00")
-        labels.append(t)
-        trade.append(10000 * (i + 1))
-        behavior.append(20000 * (i + 1))
-        device.append(5000 * (i + 1))
+        slot_start = start_base + timedelta(hours=i)
+        slot_end = slot_start + timedelta(hours=1)
+        labels.append(slot_start.strftime("%H:00"))
+
+        # 交易数据：按交易时间统计条数
+        trade_count = FinancialTransaction.query.filter(
+            FinancialTransaction.transaction_time >= slot_start,
+            FinancialTransaction.transaction_time < slot_end,
+        ).count()
+
+        # 用户行为：按登录日志统计条数
+        behavior_count = LoginLog.query.filter(
+            LoginLog.login_time >= slot_start,
+            LoginLog.login_time < slot_end,
+        ).count()
+
+        # 设备数据：按设备最近登录时间统计条数
+        device_count = Device.query.filter(
+            Device.last_login_time >= slot_start,
+            Device.last_login_time < slot_end,
+        ).count()
+
+        trade_data.append(trade_count)
+        behavior_data.append(behavior_count)
+        device_data.append(device_count)
 
     return api_response(
         data={
             "labels": labels,
             "datasets": [
-                {"label": "交易数据", "data": trade},
-                {"label": "用户行为", "data": behavior},
-                {"label": "设备数据", "data": device},
+                {"label": "交易数据", "data": trade_data},
+                {"label": "用户行为", "data": behavior_data},
+                {"label": "设备数据", "data": device_data},
             ],
         }
     )
@@ -141,6 +167,10 @@ def data_collection_trend():
 # 6.5 获取数据质量问题
 @bp.get("/data-sources/<source_id>/quality-issues")
 def quality_issues_by_source(source_id):
+    # 先检查数据源是否存在
+    if DataSource.query.get(source_id) is None:
+        return api_response(code=404, message="数据源不存在")
+
     page = int(request.args.get("page", 1))
     page_size = int(request.args.get("pageSize", 10))
     issue_type = request.args.get("type", "all")
@@ -206,8 +236,13 @@ def quality_issues_by_source(source_id):
 # 6.6 获取数据预览（占位实现）
 @bp.get("/data-sources/<source_id>/preview")
 def data_preview(source_id):
+    # 不存在的数据源直接返回 404
+    ds = DataSource.query.get(source_id)
+    if ds is None:
+        return api_response(code=404, message="数据源不存在")
+
     _type = request.args.get("type", "trade")
-    _ = request.args.get("limit", 10)
+    limit = int(request.args.get("limit", 10))
 
     # 当前数据库未存储原始业务数据，这里返回结构化占位示例
     if _type == "trade":
@@ -228,6 +263,16 @@ def data_preview(source_id):
                 "level": "VIP",
             }
         ]
+    elif _type == "image":
+        sample = [
+            {
+                "imageId": "IMG20230615001",
+                "url": "https://example.com/image/IMG20230615001.jpg",
+                "size": 204800,
+                "time": "14:32:15",
+                "status": "stored",
+            }
+        ]
     elif _type == "device":
         sample = [
             {
@@ -239,12 +284,19 @@ def data_preview(source_id):
     else:
         sample = []
 
-    return api_response(data={"list": sample, "total": len(sample)})
+    # total 更贴近文档语义：优先使用数据源 today_collected 字段
+    total = int(ds.today_collected or len(sample))
+
+    return api_response(data={"list": sample[:limit], "total": total})
 
 
 # 6.7 获取数据质量评分（简单基于问题严重程度估算）
 @bp.get("/data-sources/<source_id>/quality-score")
 def data_quality_score(source_id):
+    # 先检查数据源是否存在
+    if DataSource.query.get(source_id) is None:
+        return api_response(code=404, message="数据源不存在")
+
     issues = DataQualityIssue.query.filter_by(source_id=source_id).all()
     score = 100
     for i in issues:
@@ -285,11 +337,28 @@ def reconnect_data_source(source_id):
 # 6.9 导出数据质量问题列表（CSV）
 @bp.get("/data-sources/<source_id>/quality-issues/export")
 def export_quality_issues(source_id):
+    # 不存在的数据源直接返回 404
+    if DataSource.query.get(source_id) is None:
+        return api_response(code=404, message="数据源不存在")
+
     fmt = request.args.get("format", "csv")
     if fmt != "csv":
         return api_response(code=400, message="only csv export is supported currently")
 
-    issues = DataQualityIssue.query.filter_by(source_id=source_id).order_by(DataQualityIssue.created_at.desc()).all()
+    # 支持按文档中的 type 参数过滤导出的质量问题类型
+    issue_type = request.args.get("type", "all")
+    type_map = {
+        "missing": "缺失字段",
+        "format": "格式错误",
+        "abnormal": "值异常",
+        "inconsistent": "数据不一致",
+    }
+
+    query = DataQualityIssue.query.filter_by(source_id=source_id)
+    if issue_type != "all" and issue_type in type_map:
+        query = query.filter(DataQualityIssue.issue_type == type_map[issue_type])
+
+    issues = query.order_by(DataQualityIssue.created_at.desc()).all()
 
     def _dt(v):
         return v.strftime("%Y-%m-%d %H:%M:%S") if v else ""

@@ -335,6 +335,7 @@ def main():
             score=90,
             description="大额异地交易，短时间内多笔交易",
             detection_time=now - timedelta(minutes=4),
+            duration="0h 4m",
             status="待处理",
             user_id="u_test_001",
             device_id="d_test_001",
