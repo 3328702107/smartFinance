@@ -93,7 +93,7 @@ npm install
 npm run dev
 ```
 > 前端服务通常运行在 `http://localhost:5173`
-### 3. 数据库
+### 4. 数据库
 smartfinance.sql
 ---
 
@@ -129,7 +129,7 @@ smartfinance.sql
 
 ## 👥 贡献者
 
-@3328702107
+@3328702107 @Yusnw @ xyzZz-as
 
 ## 📄 许可证
 
