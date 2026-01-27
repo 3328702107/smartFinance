@@ -61,11 +61,19 @@
               v-show="showUserMenu"
               class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
             >
-              <a href="#" class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth">
+              <router-link 
+                to="/profile" 
+                class="block px-4 py-2 text-sm text-light-dark hover:bg-primary hover:text-white transition-smooth"
+                @click="showUserMenu = false"
+              >
                 <i class="fas fa-user mr-2"></i>个人资料
-              </a>
+              </router-link>
               <div class="border-t border-gray-100 my-1"></div>
-              <a href="#" class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth">
+              <a 
+                href="#" 
+                @click.prevent="handleLogout"
+                class="block px-4 py-2 text-sm text-danger hover:bg-danger hover:text-white transition-smooth"
+              >
                 <i class="fas fa-sign-out-alt mr-2"></i>登出
               </a>
             </div>
@@ -127,9 +135,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const currentRoute = computed(() => route.path)
 
 const showUserMenu = ref(false)
@@ -142,6 +151,14 @@ const toggleUserMenu = () => {
 
 const toggleMobileMenu = () => {
   showMobileMenu.value = !showMobileMenu.value
+  showUserMenu.value = false
+}
+
+const handleLogout = () => {
+  // 清除 token
+  localStorage.removeItem('token')
+  // 跳转到登录页
+  router.push('/login')
   showUserMenu.value = false
 }
 
