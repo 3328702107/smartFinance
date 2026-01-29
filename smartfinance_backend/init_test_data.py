@@ -335,6 +335,7 @@ def main():
 
         # ========== 第五步：插入风险事件及关联数据 ==========
 
+        # 基础示例事件（与文档示例一致）
         ev_id = "ev_test_001"
         ev = RiskEvent(
             event_id=ev_id,
@@ -443,6 +444,81 @@ def main():
             ],
         )
         db.session.add(resp)
+
+        db.session.commit()
+
+        # 额外造一批不同类型、不同日期的事件和告警，用于丰富 /api/alerts 和 /api/alerts/type-trend 的数据
+        # 覆盖账户、交易、身份、设备等多种业务类型
+        extra_types = [
+            ("账户盗用", "账户盗用告警"),
+            ("批量注册", "批量注册告警"),
+            ("异常交易", "异常交易告警"),
+            ("证件伪造", "证件伪造告警"),
+            ("设备异常", "设备异常告警"),
+        ]
+
+        for days_ago in range(0, 7):  # 最近 7 天
+            day_base_time = now - timedelta(days=days_ago, minutes=10)
+            for idx, (event_type, alert_type) in enumerate(extra_types):
+                ev_dynamic_id = f"ev_demo_{days_ago}_{idx}"
+                risk_level = ["高", "中", "低"][idx % 3]
+                status = "待处理" if days_ago == 0 else "已解决"
+
+                # 风险事件
+                ev_demo = RiskEvent(
+                    event_id=ev_dynamic_id,
+                    event_type=event_type,
+                    risk_level=risk_level,
+                    score=60 + idx * 5,
+                    description=f"{event_type} 测试事件（{days_ago} 天前）",
+                    detection_time=day_base_time,
+                    duration="0h 5m",
+                    status=status,
+                    user_id="u_test_001" if idx % 2 == 0 else "u_test_002",
+                    device_id="d_test_001" if idx % 2 == 0 else "d_test_002",
+                    ip_address="4.4.4.4",
+                    trigger_rule="规则引擎",
+                    severity_scope="个人",
+                )
+                db.session.add(ev_demo)
+
+                # 对应告警
+                al_demo = Alert(
+                    alert_id=f"al_demo_{days_ago}_{idx}",
+                    event_id=ev_dynamic_id,
+                    alert_type=alert_type,
+                    alert_level=risk_level,
+                    triggered_at=day_base_time,
+                    status=status,
+                )
+                db.session.add(al_demo)
+
+        db.session.commit()
+
+        # 再额外造一批最近 24 小时内的事件数据（无告警），用于事件趋势接口测试
+        hourly_types = ["账户盗用", "异常交易", "设备异常"]
+        for i in range(24):
+            t = now - timedelta(hours=i)
+            ev_hour_id = f"ev_hour_{i:02d}"
+            event_type = hourly_types[i % len(hourly_types)]
+            risk_level = ["高", "中", "低"][i % 3]
+
+            ev_hour = RiskEvent(
+                event_id=ev_hour_id,
+                event_type=event_type,
+                risk_level=risk_level,
+                score=50 + i,
+                description=f"{event_type} 最近 {i} 小时内测试事件",
+                detection_time=t,
+                duration="0h 5m",
+                status="待处理" if i <= 6 else "已解决",
+                user_id="u_test_001" if i % 2 == 0 else "u_test_002",
+                device_id="d_test_001" if i % 2 == 0 else "d_test_002",
+                ip_address="5.5.5.5",
+                trigger_rule="规则引擎",
+                severity_scope="个人",
+            )
+            db.session.add(ev_hour)
 
         db.session.commit()
 

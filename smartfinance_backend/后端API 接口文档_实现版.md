@@ -1490,6 +1490,45 @@ Content-Type: multipart/form-data
 
 ---
 
+### 7.14 获取事件趋势数据
+
+**接口地址:** `GET /event-analysis/events/trend`
+
+**请求参数（query）：**
+- `period`: string，可选，时间范围：
+  - `today`（默认）：最近若干小时，按小时聚合；
+  - `week`：本周（最近 7 天），按天聚合；
+  - `month`：本月（最近 30 天），按天聚合；
+- `hours`: int，可选，仅在 `period=today` 时生效，默认 24，表示统计最近多少小时内的事件趋势，最大 72。
+
+**响应说明：**
+- `period=today`：
+  - 以小时为粒度，对 `RiskEvent.detection_time` 进行聚合；
+  - `labels` 形如 `"08:00"`，代表小时；
+- `period=week/month`：
+  - 以天为粒度聚合；
+  - `labels` 形如 `"01-29"`，代表日期；
+- 所有模式下，`datasets` 为不同风险等级（"高风险"、"中风险"、"低风险"）对应的数量数组，适合直接用于折线/面积图。
+
+**响应示例（period=today）：**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "labels": ["00:00", "01:00", "02:00", "03:00"],
+    "datasets": [
+      {"label": "高风险", "data": [1, 0, 2, 1]},
+      {"label": "中风险", "data": [0, 1, 1, 0]},
+      {"label": "低风险", "data": [2, 3, 1, 0]}
+    ]
+  },
+  "timestamp": 1697123456789
+}
+```
+
+---
+
 ## 8. 通用接口
 
 路由前缀：`/api/common`
