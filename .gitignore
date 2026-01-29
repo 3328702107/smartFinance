@@ -65,3 +65,6 @@ nul
 
 # Claude Code
 .claude/
+
+# Agent Skills
+.agent/
