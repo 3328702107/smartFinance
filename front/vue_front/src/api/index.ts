@@ -16,3 +16,9 @@ export * from './alerts'
 // 用户 API
 export * from './user'
 
+// 数据采集 API
+export * from './dataCollection'
+
+// 通用 API
+export * from './common'
+

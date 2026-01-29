@@ -50,11 +50,11 @@
               class="flex items-center space-x-2 focus:outline-none"
             >
               <img 
-                src="https://picsum.photos/id/1005/200/200" 
+                :src="avatarUrl" 
                 alt="用户头像" 
                 class="w-8 h-8 rounded-full object-cover border-2 border-primary"
               >
-              <span class="hidden md:inline text-sm font-medium">张经理</span>
+              <span class="hidden md:inline text-sm font-medium">{{ displayName }}</span>
               <i class="fas fa-angle-down text-light-dark"></i>
             </button>
             <div 
@@ -136,6 +136,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getUserProfile, type UserProfile } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -143,6 +144,48 @@ const currentRoute = computed(() => route.path)
 
 const showUserMenu = ref(false)
 const showMobileMenu = ref(false)
+
+// 用户信息
+const userInfo = ref<Partial<UserProfile>>({
+  username: '',
+  name: '',
+  avatar: ''
+})
+
+// 显示名称（优先显示 name，如果没有则显示 username）
+const displayName = computed(() => {
+  return userInfo.value.name || userInfo.value.username || '用户'
+})
+
+// 头像 URL
+const avatarUrl = computed(() => {
+  if (userInfo.value.avatar) {
+    if (userInfo.value.avatar.startsWith('/')) {
+      return `http://localhost:5000${userInfo.value.avatar}`
+    }
+    return userInfo.value.avatar
+  }
+  return 'https://picsum.photos/id/1005/200/200'
+})
+
+// 获取用户信息
+const fetchUserInfo = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    
+    const { data: res } = await getUserProfile()
+    if (res.code === 200 && res.data) {
+      userInfo.value = {
+        username: res.data.username,
+        name: res.data.name,
+        avatar: res.data.avatar
+      }
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
 
 const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value
@@ -172,6 +215,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  fetchUserInfo()
 })
 
 onUnmounted(() => {

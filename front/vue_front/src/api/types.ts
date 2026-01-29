@@ -97,3 +97,101 @@ export interface RiskEvent {
   userName: string
 }
 
+// ============ 数据采集相关类型 ============
+
+// 数据源
+export interface DataSource {
+  id: number
+  name: string
+  type: string
+  connection: string
+  status: 'normal' | 'warning' | 'error' | 'stopped'
+  statusName: string
+  collectionStatus: 'running' | 'stopped'
+  collectionStatusName: string
+  lastSyncTime: string
+  progress: number
+  todayCollected: number
+  estimatedCompletion?: string
+  qualityIssuesCount: number
+  errorMessage?: string | null
+}
+
+// 数据源统计
+export interface DataSourceStatistics {
+  total: number
+  normal: number
+  abnormal: number
+  qualityIssues: number
+}
+
+// 数据源状态分布
+export interface DataSourceStatusDistribution {
+  normal: number
+  warning: number
+  error: number
+  stopped: number
+}
+
+// 数据采集趋势
+export interface CollectionTrendDataset {
+  label: string
+  data: number[]
+}
+
+export interface CollectionTrendData {
+  labels: string[]
+  datasets: CollectionTrendDataset[]
+}
+
+// 数据质量问题
+export interface QualityIssue {
+  id: string
+  type: 'missing' | 'format' | 'abnormal' | 'inconsistent'
+  typeName: string
+  field: string | null
+  description: string
+  time: string
+}
+
+export interface QualityIssuesData {
+  list: QualityIssue[]
+  statistics: {
+    missing: number
+    formatError: number
+    abnormal: number
+    inconsistent?: number
+  }
+  total: number
+  page: number
+  pageSize: number
+}
+
+// 数据预览项
+export interface DataPreviewItem {
+  transactionId?: string
+  userId?: string
+  amount?: number
+  time?: string
+  status?: string
+  [key: string]: any
+}
+
+export interface DataPreview {
+  list: DataPreviewItem[]
+  total: number
+}
+
+// 数据质量评分
+export interface QualityScore {
+  score: number
+  maxScore: number
+  dimensions: {
+    completeness: number
+    accuracy: number
+    consistency: number
+    timeliness: number
+  }
+}
+
+
