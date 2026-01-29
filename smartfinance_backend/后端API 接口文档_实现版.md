@@ -1022,7 +1022,8 @@ Content-Type: multipart/form-data
     "statistics": {
       "missing": 8,
       "formatError": 3,
-      "abnormal": 1
+      "abnormal": 1,
+      "inconsistent": 0
     },
     "total": 12,
     "page": 1,
@@ -1126,6 +1127,34 @@ Content-Type: multipart/form-data
 **响应：**
 - 成功时返回 `text/csv` 文件流，带 Content-Disposition 头；
 - 若 `format` 非 `csv`，返回：`code=400`, `message="only csv export is supported currently"`。
+
+---
+
+### 6.10 获取数据质量问题汇总
+
+**接口地址:** `GET /data-collection/quality-issues/summary`
+
+**说明：**
+- 按照问题类型对所有数据源的质量问题进行汇总；
+- 主要用于首页/概览页上方的“缺失关键字段 / 格式错误 / 值异常 / 数据不一致”等汇总卡片展示。
+
+**响应示例：**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "statistics": {
+      "missing": 32,
+      "formatError": 24,
+      "abnormal": 8,
+      "inconsistent": 5
+    },
+    "total": 69
+  },
+  "timestamp": 1697123456789
+}
+```
 
 ---
 

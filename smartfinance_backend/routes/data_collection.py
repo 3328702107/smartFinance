@@ -205,22 +205,8 @@ def quality_issues_by_source(source_id):
 
     items = [to_item(i) for i in pagination.items]
 
-    # 统计分布
-    stats_rows = (
-        db.session.query(DataQualityIssue.issue_type, db.func.count().label("cnt"))
-        .filter(DataQualityIssue.source_id == source_id)
-        .group_by(DataQualityIssue.issue_type)
-        .all()
-    )
-    statistics = {"missing": 0, "formatError": 0, "abnormal": 0}
-    for t, cnt in stats_rows:
-        code = _map_issue_type_code(t)
-        if code == "missing":
-            statistics["missing"] += int(cnt)
-        elif code == "format":
-            statistics["formatError"] += int(cnt)
-        elif code == "abnormal":
-            statistics["abnormal"] += int(cnt)
+    # 统计分布（当前数据源）
+    statistics = _calculate_quality_issue_statistics(source_id)
 
     return api_response(
         data={
@@ -229,6 +215,21 @@ def quality_issues_by_source(source_id):
             "total": pagination.total,
             "page": page,
             "pageSize": page_size,
+        }
+    )
+
+
+@bp.get("/quality-issues/summary")
+def quality_issues_summary():
+    """数据质量问题汇总（所有数据源维度）。"""
+
+    statistics = _calculate_quality_issue_statistics()
+    total = sum(statistics.values())
+
+    return api_response(
+        data={
+            "statistics": statistics,
+            "total": total,
         }
     )
 
@@ -420,6 +421,34 @@ def _map_issue_type_name(code: str) -> str:
         "inconsistent": "数据不一致",
     }
     return mapping.get(code, code)
+
+
+def _calculate_quality_issue_statistics(source_id: Optional[str] = None) -> dict:
+    """按照问题类型统计数量。
+
+    :param source_id: 如果传入，则仅统计该数据源；不传则统计所有数据源。
+    :return: {"missing": int, "formatError": int, "abnormal": int, "inconsistent": int}
+    """
+
+    query = db.session.query(DataQualityIssue.issue_type, db.func.count().label("cnt"))
+    if source_id is not None:
+        query = query.filter(DataQualityIssue.source_id == source_id)
+
+    stats_rows = query.group_by(DataQualityIssue.issue_type).all()
+
+    statistics = {"missing": 0, "formatError": 0, "abnormal": 0, "inconsistent": 0}
+    for t, cnt in stats_rows:
+        code = _map_issue_type_code(t)
+        if code == "missing":
+            statistics["missing"] += int(cnt)
+        elif code == "format":
+            statistics["formatError"] += int(cnt)
+        elif code == "abnormal":
+            statistics["abnormal"] += int(cnt)
+        elif code == "inconsistent":
+            statistics["inconsistent"] += int(cnt)
+
+    return statistics
 
 
     # 采集指标现在完全来源于数据库字段，不再在路由层做演示计算

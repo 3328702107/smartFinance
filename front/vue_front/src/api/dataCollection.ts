@@ -8,7 +8,8 @@ import type {
   CollectionTrendData,
   QualityIssuesData,
   DataPreview,
-  QualityScore
+  QualityScore,
+  QualityIssuesSummary
 } from './types'
 
 /**
@@ -51,6 +52,15 @@ export function getCollectionTrend(period: string = 'today') {
   return requestWithoutApi.get<ApiResponse<CollectionTrendData>>('/data-collection/collection-trend', {
     params: { period }
   })
+}
+
+/**
+ * 获取数据质量问题汇总（所有数据源）
+ */
+export function getQualityIssuesSummary() {
+  return requestWithoutApi.get<ApiResponse<QualityIssuesSummary>>(
+    '/data-collection/quality-issues/summary'
+  )
 }
 
 /**

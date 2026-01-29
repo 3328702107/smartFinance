@@ -167,6 +167,17 @@ export interface QualityIssuesData {
   pageSize: number
 }
 
+// 数据质量问题汇总（用于汇总卡片）
+export interface QualityIssuesSummary {
+  statistics: {
+    missing: number
+    formatError: number
+    abnormal: number
+    inconsistent?: number
+  }
+  total: number
+}
+
 // 数据预览项
 export interface DataPreviewItem {
   transactionId?: string
