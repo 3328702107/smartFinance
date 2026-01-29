@@ -67,4 +67,8 @@ nul
 .claude/
 
 # Agent Skills
+<<<<<<< HEAD
 .agent/
+=======
+.agent/
+>>>>>>> d1de389291a748593e0445be3e9a6979639fa62b
