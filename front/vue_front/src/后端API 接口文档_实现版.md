@@ -619,6 +619,8 @@ Content-Type: multipart/form-data
 
 路由前缀：`/api/alerts`
 
+说明：本模块的状态变更与处理记录接口会自动写入审计留痕，包括告警内部文本日志（operation_log）和事件处理记录（HandlingRecord），操作人从 `Authorization: Bearer {token}` 中解析得到，并同步更新告警的 `handler` 字段。
+
 ### 5.1 获取告警列表
 
 **接口地址:** `GET /api/alerts`
@@ -772,7 +774,8 @@ Content-Type: multipart/form-data
         "time": "2023-06-15 10:24:35",
         "note": "处理说明"
       }
-    ]
+    ],
+    "operationLog": "[2023-06-15 10:24:35] 张经理 将状态 待处理 -> 已解决\n[2023-06-15 10:30:00] 张经理 执行 标记已处理，备注：已联系用户确认"
   },
   "timestamp": 1697123456789
 }
@@ -804,6 +807,11 @@ Content-Type: multipart/form-data
 }
 ```
 
+**留痕与操作人说明：**
+- 系统会从请求头 `Authorization: Bearer {token}` 中解析当前登录用户，作为本次状态变更的操作人；若 token 缺失或无效，则使用 "系统" 作为操作人。
+- 告警的 `handler`/`handlerName` 字段会被更新为该操作人。
+- 若告警关联了事件，则会同步为该事件新增一条处理记录（HandlingRecord），并在告警的内部操作日志（operation_log）中追加一条带时间戳的状态变更记录，便于审计追踪。
+
 ---
 
 ### 5.7 批量操作告警
@@ -831,6 +839,11 @@ Content-Type: multipart/form-data
 }
 ```
 
+**留痕与操作人说明：**
+- 系统会从请求头 `Authorization: Bearer {token}` 中解析当前登录用户，作为本次批量操作的统一操作人；若 token 缺失或无效，则使用 "系统" 作为操作人。
+- 对 `resolve/ignore/process` 三种操作：每条告警都会更新其 `handler`/`handlerName` 字段为该操作人，并在 operation_log 中追加一条带时间戳的批量操作记录；若告警关联了事件，还会为该事件新增一条处理记录（HandlingRecord）。
+- 对 `delete` 操作：仅删除告警记录，不会新增处理记录，但受影响数量仍计入 `successCount`/`failCount` 统计。
+
 ---
 
 ### 5.8 添加告警处理记录
@@ -841,7 +854,8 @@ Content-Type: multipart/form-data
 ```json
 {
   "note": "string",          // 必填
-  "action": "string 可选"     // freeze/send_verification/mark_resolved/ignore/contact_user
+  "action": "string 可选",    // freeze/send_verification/mark_resolved/ignore/contact_user
+  "operator": "string 可选"   // 操作人，不传则默认使用当前登录用户
 }
 ```
 
@@ -854,6 +868,11 @@ Content-Type: multipart/form-data
   "timestamp": 1697123456789
 }
 ```
+
+**操作人与留痕说明：**
+- 若请求体中未显式传入 `operator`，系统会尝试从 `Authorization: Bearer {token}` 中解析当前登录用户作为操作人；若解析失败，则使用 "系统" 作为操作人。
+- 接口会为告警关联的事件新增一条 HandlingRecord 处理记录，并将告警的 `handler`/`handlerName` 字段更新为该操作人。
+- 同时会在告警的内部操作日志（operation_log）中追加一条带时间戳的处理记录说明，用于后续审计与追踪。
 
 ---
 

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from flask import Blueprint, request, Response
+import jwt
 from core.database import db
 from models.risk import Alert, RiskEvent
 from models.analysis import HandlingRecord
@@ -23,6 +24,51 @@ def _normalize_status(value: Optional[str]):
     if not value:
         return None
     return STATUS_MAP.get(value, value)
+
+
+def _get_current_operator() -> str:
+    """从 Authorization token 中获取当前操作人用户名，失败则返回 "系统"。"""
+    from flask import current_app
+
+    token = request.headers.get("Authorization", "")
+    if token.lower().startswith("bearer "):
+        token = token.split(" ", 1)[1]
+    if not token:
+        return "系统"
+
+    try:
+        payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+        user = User.query.get(payload.get("sub")) if payload.get("sub") else None
+        if not user:
+            return "系统"
+        # 优先用户名，其次姓名，再次 user_id
+        return getattr(user, "username", None) or getattr(user, "name", None) or user.user_id
+    except Exception:
+        return "系统"
+
+
+def _append_operation_log(alert: Alert, message: str):
+    """在 alerts.operation_log 中追加一条带时间戳的留痕记录。"""
+    ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] {message}"
+    if alert.operation_log:
+        alert.operation_log = alert.operation_log + "\n" + line
+    else:
+        alert.operation_log = line
+
+
+def _add_status_handling_record(alert: Alert, message: str, operator: str):
+    """为状态变更写一条 HandlingRecord 记录（如果有事件 ID）。"""
+    if not alert.event_id:
+        return
+    rec = HandlingRecord(
+        event_id=alert.event_id,
+        operator=operator,
+        action="标记已处理",
+        action_time=datetime.utcnow(),
+        comment=message,
+    )
+    db.session.add(rec)
 
 
 def _compute_alert_stats():
@@ -212,7 +258,16 @@ def update_alert_status(alert_id):
         return api_response(code=400, message="invalid status")
 
     alert = Alert.query.get_or_404(alert_id)
+    old_status = alert.status or ""  # 可能为 None
+    operator = _get_current_operator()
     alert.status = normalized
+    alert.handler = operator
+
+    # 留痕：状态变更写入 operation_log 和 HandlingRecord
+    msg = f"告警状态变更：{operator} 将状态 {old_status or '未知'} -> {normalized}"
+    _append_operation_log(alert, msg)
+    _add_status_handling_record(alert, msg, operator)
+
     db.session.commit()
     return api_response(message="状态更新成功")
 
@@ -403,6 +458,9 @@ def alert_detail(alert_id):
         for r in records
     ]
 
+    # 返回操作日志原文，便于前端展示留痕记录
+    data["operationLog"] = alert.operation_log or ""
+
     return api_response(data=data)
 
 
@@ -425,6 +483,8 @@ def batch_operation():
     success = 0
     fail = 0
 
+    operator = _get_current_operator()
+
     for aid in ids:
         alert = Alert.query.get(aid)
         if not alert:
@@ -443,7 +503,12 @@ def batch_operation():
                 if not new_status:
                     fail += 1
                     continue
+                old_status = alert.status or ""
                 alert.status = new_status
+                alert.handler = operator
+                msg = f"批量操作({action})：{operator} 将状态 {old_status or '未知'} -> {new_status}"
+                _append_operation_log(alert, msg)
+                _add_status_handling_record(alert, msg, operator)
             success += 1
         except Exception:
             fail += 1
@@ -476,14 +541,21 @@ def add_alert_processing_record(alert_id):
     }
     action_name = action_map.get(action_code, "标记已处理") if action_code else "标记已处理"
 
+    operator = data.get("operator") or _get_current_operator()
+    alert.handler = operator
+
     rec = HandlingRecord(
         event_id=alert.event_id,
-        operator="系统",
+        operator=operator,
         action=action_name,
         action_time=datetime.utcnow(),
         comment=note,
     )
     db.session.add(rec)
+
+    # 留痕：处理记录也写入 alerts.operation_log
+    log_msg = f"处理记录：{operator} 执行 {action_name}，备注：{note}"
+    _append_operation_log(alert, log_msg)
     db.session.commit()
 
     return api_response(message="处理记录添加成功")
