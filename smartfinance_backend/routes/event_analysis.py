@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from flask import Blueprint, request, Response
@@ -46,6 +46,111 @@ def _event_type_code(event_type: Optional[str]) -> str:
         "批量注册": "batch_registration",
     }
     return mapping.get(event_type or "", "account_theft")
+
+
+@bp.get("/events/trend")
+def event_trend():
+    """获取风险事件趋势数据。
+
+    支持三种时间范围：
+    - 今日（最近若干小时，默认 24h，按小时聚合）
+    - 本周（最近 7 天，按天聚合）
+    - 本月（最近 30 天，按天聚合）
+    """
+    period = request.args.get("period", "today")
+    if period not in {"today", "week", "month"}:
+        period = "today"
+
+    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+
+    labels: list[str] = []
+    high: list[int] = []
+    medium: list[int] = []
+    low: list[int] = []
+
+    if period == "today":
+        # 今日：固定按当天 00:00-23:00 共 24 个整点统计
+        day_start = now.replace(hour=0)
+        day_end = day_start + timedelta(days=1)
+
+        rows = (
+            db.session.query(
+                db.func.date_format(RiskEvent.detection_time, "%Y-%m-%d %H:00:00").label("bucket"),
+                RiskEvent.risk_level,
+                db.func.count().label("cnt"),
+            )
+            .filter(RiskEvent.detection_time.isnot(None))
+            .filter(RiskEvent.detection_time >= day_start)
+            .filter(RiskEvent.detection_time < day_end)
+            .group_by("bucket", RiskEvent.risk_level)
+            .all()
+        )
+
+        bucket_map = {}
+        for bucket, lvl, cnt in rows:
+            if not bucket:
+                continue
+            if bucket not in bucket_map:
+                bucket_map[bucket] = {"高": 0, "中": 0, "低": 0}
+            bucket_map[bucket][lvl] = bucket_map[bucket].get(lvl, 0) + int(cnt)
+
+        for i in range(24):
+            t = day_start + timedelta(hours=i)
+            label = t.strftime("%H:00")
+            key = t.strftime("%Y-%m-%d %H:00:00")
+            labels.append(label)
+            data = bucket_map.get(key, {"高": 0, "中": 0, "低": 0})
+            high.append(data.get("高", 0))
+            medium.append(data.get("中", 0))
+            low.append(data.get("低", 0))
+
+    else:
+        # 周 / 月：按天聚合
+        days = 7 if period == "week" else 30
+        start_date = (now.date() - timedelta(days=days - 1))
+
+        rows = (
+            db.session.query(
+                db.func.date(RiskEvent.detection_time).label("bucket"),
+                RiskEvent.risk_level,
+                db.func.count().label("cnt"),
+            )
+            .filter(RiskEvent.detection_time.isnot(None))
+            .filter(db.func.date(RiskEvent.detection_time) >= start_date)
+            .group_by("bucket", RiskEvent.risk_level)
+            .all()
+        )
+
+        bucket_map = {}
+        for bucket, lvl, cnt in rows:
+            if not bucket:
+                continue
+            # bucket 可能是 date 对象，也可能是字符串
+            key = bucket.isoformat() if hasattr(bucket, "isoformat") else str(bucket)
+            if key not in bucket_map:
+                bucket_map[key] = {"高": 0, "中": 0, "低": 0}
+            bucket_map[key][lvl] = bucket_map[key].get(lvl, 0) + int(cnt)
+
+        for i in range(days):
+            d = start_date + timedelta(days=i)
+            label = d.strftime("%m-%d")
+            key = d.isoformat()
+            labels.append(label)
+            data = bucket_map.get(key, {"高": 0, "中": 0, "低": 0})
+            high.append(data.get("高", 0))
+            medium.append(data.get("中", 0))
+            low.append(data.get("低", 0))
+
+    return api_response(
+        data={
+            "labels": labels,
+            "datasets": [
+                {"label": "高风险", "data": high},
+                {"label": "中风险", "data": medium},
+                {"label": "低风险", "data": low},
+            ],
+        }
+    )
 
 
 @bp.get("/events/<event_id>")
