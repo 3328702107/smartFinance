@@ -1,4 +1,6 @@
 from flask import Flask, jsonify
+from sqlalchemy import text
+
 from config import config_map
 from core.database import db
 from routes import register_blueprints
@@ -18,7 +20,7 @@ def create_app(config_name="default"):
         db_status = "ok"
         try:
             # 简单探测数据库连通性
-            db.session.execute("SELECT 1")
+            db.session.execute(text("SELECT 1"))
         except Exception:
             db_status = "error"
 
@@ -32,8 +34,11 @@ def create_app(config_name="default"):
         except Exception:
             data_status = "unknown"
 
-        # 模型运行状态目前为占位，可未来接入真实模型监控
-        model_status = "正常"
+        from services.model_service import ModelService
+
+        model_summary = ModelService.get_model_status_summary()
+        model_overall = model_summary.get("overall_status", "degraded")
+        model_status = "正常" if model_overall == "normal" else ("降级" if model_overall == "degraded" else "异常")
 
         from datetime import datetime
 
@@ -42,6 +47,8 @@ def create_app(config_name="default"):
                 "status": "ok" if db_status == "ok" else "degraded",
                 "db": db_status,
                 "model_status": model_status,
+                "model_status_code": model_overall,
+                "model_details": model_summary.get("services", []),
                 "data_status": data_status,
                 "timestamp": datetime.utcnow().isoformat(),
             }

@@ -59,6 +59,107 @@
           </div>
         </div>
       </div>
+
+      <!-- 千帆模型辅助判断 -->
+      <section class="mb-8">
+        <div class="bg-white rounded-xl card-shadow overflow-hidden">
+          <div class="p-6 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold">千帆模型辅助判断</h3>
+              <p class="text-sm text-light-dark mt-1">输入事件描述，调用千帆 AppBuilder 获取风险判断结果</p>
+            </div>
+            <div class="text-sm">
+              <span class="text-light-dark mr-2">服务状态</span>
+              <span class="px-3 py-1 rounded-full text-xs font-medium" :class="qianfanServiceStatusClass">
+                {{ qianfanServiceStatusText }}
+              </span>
+            </div>
+          </div>
+
+          <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm text-light-dark mb-2">案件描述</label>
+              <textarea
+                v-model="qianfanQuery"
+                rows="6"
+                class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth resize-y text-sm"
+                placeholder="例如：用户在异地非常用设备登录后，尝试转出大额资金，请判断风险等级并给出处理建议。"
+              ></textarea>
+
+              <label class="block text-sm text-light-dark mt-4 mb-2">用户ID（可选）</label>
+              <input
+                v-model="qianfanUserId"
+                type="text"
+                class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-smooth text-sm"
+                placeholder="如：USER-789456"
+              />
+
+              <p v-if="qianfanServiceMessage" class="text-xs text-light-dark mt-3">
+                模型提示：{{ qianfanServiceMessage }}
+              </p>
+              <p v-if="qianfanError" class="text-sm text-danger mt-2">
+                {{ qianfanError }}
+              </p>
+
+              <div class="flex flex-wrap gap-3 mt-4">
+                <button
+                  @click="submitQianfanJudge"
+                  :disabled="qianfanLoading"
+                  class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-smooth text-sm"
+                >
+                  <i class="fas fa-robot mr-2"></i>{{ qianfanLoading ? '判断中...' : '调用千帆判断' }}
+                </button>
+                <button
+                  @click="resetQianfanJudge"
+                  class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm"
+                >
+                  重置输入
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <h4 class="font-medium mb-3">模型返回</h4>
+              <div v-if="qianfanResult" class="space-y-3">
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                  <span
+                    class="px-2.5 py-1 rounded-full font-medium"
+                    :class="qianfanResult.available ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'"
+                  >
+                    {{ qianfanResult.available ? '可用' : '不可用' }}
+                  </span>
+                  <span>
+                    风险级别：
+                    <span class="font-semibold" :class="qianfanRiskLevelClass">
+                      {{ qianfanResult.inferred_level || '未知' }}
+                    </span>
+                  </span>
+                  <span class="text-light-dark">重试次数：{{ qianfanResult.attempts ?? '-' }}</span>
+                </div>
+
+                <p v-if="qianfanResult.message" class="text-sm text-light-dark">
+                  {{ qianfanResult.message }}
+                </p>
+                <p class="text-sm leading-6 whitespace-pre-wrap">
+                  {{ qianfanResult.answer || '暂无模型文本输出' }}
+                </p>
+                <a
+                  v-if="qianfanResult.share_url"
+                  :href="qianfanResult.share_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center text-sm text-primary hover:text-primary/80"
+                >
+                  打开千帆应用链接 <i class="fas fa-external-link-alt ml-1 text-xs"></i>
+                </a>
+              </div>
+              <div v-else class="text-sm text-light-dark">
+                暂未调用模型。输入案件描述后点击“调用千帆判断”查看结果。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       
       <!-- 溯源路径分析 -->
       <section class="mb-8">
@@ -379,10 +480,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import Toast from '@/components/Toast.vue'
+import { getModelStatus, qianfanRiskJudge } from '@/api/model'
+import type { QianfanRiskJudgeResult } from '@/api/model'
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const toastMessage = ref('')
@@ -390,6 +493,61 @@ const toastType = ref<'success' | 'warning'>('success')
 const newProcessingNote = ref('')
 
 let refreshTimer: number | null = null
+
+type QianfanServiceStatus = 'loading' | 'normal' | 'abnormal' | 'not_configured' | 'unknown'
+
+const qianfanQuery = ref(
+  '用户账户在非常用设备异地登录并尝试转账50000元，请判断风险等级并给出处理建议。'
+)
+const qianfanUserId = ref('USER-789456')
+const qianfanLoading = ref(false)
+const qianfanError = ref('')
+const qianfanResult = ref<QianfanRiskJudgeResult | null>(null)
+const qianfanServiceStatus = ref<QianfanServiceStatus>('loading')
+const qianfanServiceMessage = ref('')
+
+const qianfanServiceStatusText = computed(() => {
+  switch (qianfanServiceStatus.value) {
+    case 'normal':
+      return '正常'
+    case 'not_configured':
+      return '未配置'
+    case 'abnormal':
+      return '异常'
+    case 'loading':
+      return '检测中'
+    default:
+      return '未知'
+  }
+})
+
+const qianfanServiceStatusClass = computed(() => {
+  switch (qianfanServiceStatus.value) {
+    case 'normal':
+      return 'bg-success/10 text-success'
+    case 'not_configured':
+      return 'bg-warning/10 text-warning'
+    case 'abnormal':
+      return 'bg-danger/10 text-danger'
+    case 'loading':
+      return 'bg-gray-100 text-light-dark'
+    default:
+      return 'bg-gray-100 text-light-dark'
+  }
+})
+
+const qianfanRiskLevelClass = computed(() => {
+  switch (qianfanResult.value?.inferred_level) {
+    case '高':
+      return 'text-danger'
+    case '中':
+      return 'text-warning'
+    case '低':
+      return 'text-success'
+    default:
+      return 'text-light-dark'
+  }
+})
 
 const timelineEvents = ref([
   { id: 1, title: '正常登录', description: '用户在常用设备（iPhone 13）上登录账户，地点：上海', time: '2023-06-14 20:15:32', icon: 'fas fa-user', iconBgClass: 'bg-primary' },
@@ -519,7 +677,67 @@ const showToast = (message: string, type: 'success' | 'warning' = 'success') => 
   toastRef.value?.show()
 }
 
+const resolveErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return '请求失败，请稍后重试'
+}
+
+const loadQianfanServiceStatus = async () => {
+  qianfanServiceStatus.value = 'loading'
+  qianfanServiceMessage.value = ''
+  try {
+    const response = await getModelStatus()
+    const services = response.data.data?.services ?? []
+    const serviceInfo = services.find((item) => item.service === 'qianfan_appbuilder')
+    qianfanServiceStatus.value = (serviceInfo?.status as QianfanServiceStatus) || 'unknown'
+    qianfanServiceMessage.value = serviceInfo?.message || ''
+  } catch (error) {
+    qianfanServiceStatus.value = 'abnormal'
+    qianfanServiceMessage.value = resolveErrorMessage(error)
+  }
+}
+
+const submitQianfanJudge = async () => {
+  const query = qianfanQuery.value.trim()
+  if (!query) {
+    showToast('请先输入案件描述', 'warning')
+    return
+  }
+
+  qianfanLoading.value = true
+  qianfanError.value = ''
+
+  try {
+    const response = await qianfanRiskJudge({
+      query,
+      user_id: qianfanUserId.value.trim() || undefined
+    })
+    qianfanResult.value = response.data.data
+    if (qianfanResult.value.available) {
+      showToast('千帆判断完成')
+    } else {
+      qianfanError.value = qianfanResult.value.message || '千帆模型当前不可用'
+      showToast('千帆模型当前不可用', 'warning')
+    }
+  } catch (error) {
+    qianfanResult.value = null
+    qianfanError.value = resolveErrorMessage(error)
+    showToast('千帆调用失败', 'warning')
+  } finally {
+    qianfanLoading.value = false
+  }
+}
+
+const resetQianfanJudge = () => {
+  qianfanQuery.value = ''
+  qianfanError.value = ''
+  qianfanResult.value = null
+}
+
 onMounted(() => {
+  void loadQianfanServiceStatus()
   // 设置自动刷新
   refreshTimer = window.setInterval(() => {
     showToast('数据已更新')

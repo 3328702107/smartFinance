@@ -455,22 +455,131 @@ curl -X PUT "http://localhost:5000/event-analysis/events/EVENT123/status" \
 
 ---
 
-## 11. 模型占位接口（/api/model）
+## 11. 模型接口（/api/model）
 
-### 11.1 风控评分：POST /api/model/risk_score
+### 11.1 综合风控评分：POST /api/model/risk_score
 
-- 请求体参数：任意 JSON（当前不会实际使用）
-- 示例：
+- 说明：聚合规则引擎 + 单图检测 + 千帆判断（可按参数开关）
+- 请求体参数（JSON 或 multipart/form-data）：
+  - `user_id` (string, 可选)
+  - `amount` (number, 可选)
+  - `device_id` (string, 可选)
+  - `ip_address` (string, 可选)
+  - `query` / `case_text` / `description` (string, 可选；千帆输入)
+  - `use_qianfan` (bool, 可选，默认 true)
+  - `auto_prompt` (bool, 可选，默认 true；当未提供 query 时自动构造千帆提示词)
+  - `image` / `file` (file, 可选；图片上传字段，仅 multipart 可用)
+- 示例（仅 JSON）：
 
 ```bash
 curl -X POST "http://localhost:5000/api/model/risk_score" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "USER123",
-    "amount": 5000
+    "user_id": "u_test_001",
+    "amount": 20000,
+    "ip_address": "3.3.3.3",
+    "description": "用户短时间内多次交易并触发异常设备"
   }'
 ```
 
+- 示例（带图片）：
+
+```bash
+curl -X POST "http://localhost:5000/api/model/risk_score" \
+  -F "user_id=u_test_001" \
+  -F "amount=20000" \
+  -F "description=登录人脸疑似异常" \
+  -F "image=@D:/test/sample.jpg"
+```
+
+### 11.2 单图检测：POST /api/model/image-detect
+
+- 说明：代理调用单图检测服务 `POST /predict`
+- 请求：`multipart/form-data`，字段名支持 `image` 或 `file`
+- 示例：
+
+```bash
+curl -X POST "http://localhost:5000/api/model/image-detect" \
+  -F "image=@D:/test/sample.jpg"
+```
+
+### 11.3 单图检测健康检查：GET /api/model/image-detect/health
+
+- 说明：代理调用单图检测服务 `GET /health`
+- 示例：
+
+```bash
+curl -X GET "http://localhost:5000/api/model/image-detect/health"
+```
+
+### 11.4 千帆风险判断：POST /api/model/qianfan-risk-judge
+
+- 请求体参数：
+  - `query` (string, 必填)
+  - `user_id` (string, 可选)
+  - `conversation_id` (string, 可选)
+  - `inputs` (object, 可选)
+- 示例：
+
+```bash
+curl -X POST "http://localhost:5000/api/model/qianfan-risk-judge" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "请判断该交易是否高风险：用户10分钟内6次转账，且异地设备登录",
+    "user_id": "u_test_001"
+  }'
+```
+
+### 11.5 模型状态汇总：GET /api/model/status
+
+- 说明：返回模型整体状态和各子服务状态（单图检测、千帆配置）
+- 示例：
+
+```bash
+curl -X GET "http://localhost:5000/api/model/status"
+```
+
+### 11.6 环境变量（模型相关）
+
+- 建议放在 `smartfinance_backend/.env`（后端启动时会自动读取）
+- `IMAGE_DETECTOR_BASE_URL`（默认 `http://10.86.148.254:5000`）
+- `IMAGE_DETECTOR_TIMEOUT_SECONDS`（默认 `15`）
+- `QIANFAN_APPBUILDER_SHARE_URL`（默认 `https://appbuilder.baidu.com/s/llPiaMnf`）
+- `QIANFAN_APPBUILDER_API_URL`（默认 `https://qianfan.baidubce.com/v2/app/conversation/runs`）
+- `QIANFAN_APPBUILDER_APP_ID`（默认空，需自行配置）
+- `QIANFAN_APPBUILDER_TOKEN`（默认空，需自行配置）
+- `QIANFAN_RESPONSE_MODE`（默认 `blocking`）
+- `QIANFAN_TIMEOUT_SECONDS`（默认 `20`）
+
 ---
 
-> 如果你在实际测试过程中需要新增某个接口的详细示例，可以直接在本文件相应模块下追加一小节，保持同样结构（接口路径 + 参数说明 + curl 示例）。
+> 说明：若千帆 `app_id/token` 未配置，千帆接口会返回 `available=false`，但不会影响规则引擎与图片检测的联调。
+
+### 11.7 模型接口补充（2026-02-11）
+
+- 单图检测兼容模式：后端支持 `multipart/form-data` 与 `application/json(base64)` 两种上游协议。
+- 兼容顺序：当 `IMAGE_DETECTOR_REQUEST_MODE=auto` 时，先发 multipart；若上游返回 `415` 自动切换为 JSON(base64)。
+- 健康检查兼容：先检查 `/health`；若上游未实现（404），自动回退检查 `/` 是否可达。
+- 当前联调请以服务负责人提供端口为准；当前默认配置按 `5000`。
+
+### 11.8 推荐环境变量（图片服务）
+
+```env
+IMAGE_DETECTOR_BASE_URL=http://10.86.148.254:5000
+IMAGE_DETECTOR_TIMEOUT_SECONDS=15
+IMAGE_DETECTOR_PREDICT_PATH=/predict
+IMAGE_DETECTOR_HEALTH_PATH=/health
+IMAGE_DETECTOR_REQUEST_MODE=auto
+```
+
+### 11.9 千帆重试参数（新增）
+
+```env
+QIANFAN_TIMEOUT_SECONDS=20
+QIANFAN_MAX_RETRIES=2
+QIANFAN_RETRY_BACKOFF_SECONDS=1.0
+```
+
+- `QIANFAN_MAX_RETRIES`：失败后的最大重试次数（不含首次请求）。
+- `QIANFAN_RETRY_BACKOFF_SECONDS`：指数退避基数，实际等待约为 `base * 2^attempt`。
+- 会自动重试的典型场景：超时、连接错误、以及 `424/429/5xx` 等临时性上游错误（如 qps 限流）。

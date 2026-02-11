@@ -22,3 +22,6 @@ export * from './dataCollection'
 // 通用 API
 export * from './common'
 
+// 模型 API
+export * from './model'
+

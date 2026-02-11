@@ -129,8 +129,12 @@ def monitor_risk_trend():
 @bp.get("/system-status")
 def monitor_system_status():
     from models.data import DataSource
+    from services.model_service import ModelService
 
-    model_status = "normal"
+    model_summary = ModelService.get_model_status_summary()
+    model_overall = model_summary.get("overall_status", "degraded")
+    model_status = "normal" if model_overall == "normal" else "abnormal"
+    model_status_name = "正常" if model_overall == "normal" else ("降级" if model_overall == "degraded" else "异常")
     data_status = "normal"
 
     abnormal = DataSource.query.filter(DataSource.status != "正常").count()
@@ -140,9 +144,10 @@ def monitor_system_status():
     return api_response(
         data={
             "modelStatus": model_status,
-            "modelStatusName": "正常",
+            "modelStatusName": model_status_name,
             "dataStatus": data_status,
             "dataStatusName": "正常" if data_status == "normal" else "异常",
+            "modelDetails": model_summary.get("services", []),
         }
     )
 
