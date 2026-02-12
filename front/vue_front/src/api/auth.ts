@@ -117,3 +117,4 @@ export function resetPassword(data: {
 }) {
   return request.post<ApiResponse<null>>('/auth/reset-password', data)
 }
+

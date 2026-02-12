@@ -80,8 +80,9 @@
       <!-- 模态框底部 -->
       <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
         <button 
+          data-export-button
           @click="$emit('export')"
-          class="px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth"
+          class="px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <i class="fas fa-download mr-2"></i>导出问题列表
         </button>

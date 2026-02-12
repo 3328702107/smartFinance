@@ -173,7 +173,7 @@ export interface QualityIssuesSummary {
     missing: number
     formatError: number
     abnormal: number
-    inconsistent?: number
+    inconsistent: number
   }
   total: number
 }
@@ -204,5 +204,6 @@ export interface QualityScore {
     timeliness: number
   }
 }
+
 
 

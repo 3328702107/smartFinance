@@ -112,8 +112,15 @@ requestWithoutApi.interceptors.request.use(
 
 // 响应拦截器
 requestWithoutApi.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
-    const { data } = response
+  (response: AxiosResponse<ApiResponse | Blob>) => {
+    // 如果是 blob 响应（文件下载），直接返回
+    // 注意：如果后端返回错误（如 400），即使设置了 responseType: 'blob'，
+    // 错误响应也会在 catch 块中处理
+    if (response.data instanceof Blob) {
+      return response
+    }
+    
+    const { data } = response as AxiosResponse<ApiResponse>
     
     // 业务状态码判断
     if (data.code === 200) {

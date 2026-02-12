@@ -424,7 +424,8 @@ import {
   getQualityScore,
   getQualityIssues,
   reconnectDataSource,
-  exportQualityIssues
+  exportQualityIssues,
+  getQualityIssuesSummary
 } from '@/api/dataCollection'
 import { uploadFile } from '@/api/common'
 import type { DataSource as ApiDataSource, DataSourceStatistics, DataPreviewItem, QualityScore } from '@/api/types'
@@ -625,7 +626,6 @@ const loadDataSources = async () => {
         selectedSourceId.value = dataSources.value[0].id
         loadPreviewData()
         loadQualityScore()
-        loadQualityIssuesSummary()
       }
     }
   } catch (error) {
@@ -668,14 +668,8 @@ const loadQualityScore = async () => {
 }
 
 const loadQualityIssuesSummary = async () => {
-  if (!selectedSourceId.value) return
-  
   try {
-    const response = await getQualityIssues(selectedSourceId.value, {
-      page: 1,
-      pageSize: 1, // 只需要统计数据，不需要列表数据
-      type: 'all'
-    })
+    const response = await getQualityIssuesSummary()
     
     if (response.data.code === 200) {
       const stats = response.data.data.statistics
@@ -793,28 +787,92 @@ const openQualityModal = (source: ApiDataSource) => {
 const handleExportIssues = async () => {
   if (!selectedSource.value) return
   
+  // 添加加载状态
+  const exportButton = document.querySelector('[data-export-button]') as HTMLButtonElement
+  const originalText = exportButton?.innerHTML
+  if (exportButton) {
+    exportButton.disabled = true
+    exportButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>导出中...'
+  }
+  
   try {
     const response = await exportQualityIssues(selectedSource.value.id, {
       type: 'all',
       format: 'csv'
     })
     
+    // 检查响应是否为 blob
+    if (!(response.data instanceof Blob)) {
+      throw new Error('响应格式错误')
+    }
+    
+    // 从响应头获取文件名（如果存在）
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `数据质量问题_${selectedSource.value.name}_${new Date().getTime()}.csv`
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '')
+        // 处理 UTF-8 编码的文件名
+        if (filename.startsWith('UTF-8\'\'')) {
+          filename = decodeURIComponent(filename.replace(/^UTF-8''/, ''))
+        }
+      }
+    }
+    
     // 创建下载链接
-    const blob = new Blob([response.data], { type: 'text/csv' })
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `数据质量问题_${selectedSource.value.name}_${new Date().getTime()}.csv`
+    // 处理文件名中的特殊字符
+    link.download = filename.replace(/[<>:"/\\|?*]/g, '_')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
     
     showToast('数据质量问题列表已导出为CSV文件')
-    showQualityModal.value = false
-  } catch (error) {
+  } catch (error: any) {
     console.error('导出失败:', error)
-    showToast('导出失败', 'warning')
+    let errorMessage = '导出失败'
+    
+    // 处理接口返回的错误信息
+    if (error.response?.data) {
+      // 如果是 JSON 错误响应
+      if (error.response.data.message) {
+        errorMessage = error.response.data.message
+      } else if (error.response.data instanceof Blob) {
+        // 如果是 blob 类型的错误响应，尝试读取
+        try {
+          const text = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.onerror = reject
+            reader.readAsText(error.response.data)
+          })
+          const errorData = JSON.parse(text)
+          if (errorData.message) {
+            errorMessage = errorData.message
+          }
+        } catch {
+          // 如果解析失败，使用默认错误信息
+        }
+      }
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    showToast(errorMessage, 'warning')
+  } finally {
+    // 恢复按钮状态
+    if (exportButton) {
+      exportButton.disabled = false
+      if (originalText) {
+        exportButton.innerHTML = originalText
+      }
+    }
   }
 }
 
@@ -848,14 +906,14 @@ const handlePageChange = (page: number) => {
 const refreshData = async () => {
   await Promise.all([
     loadStatistics(),
-    loadDataSources()
+    loadDataSources(),
+    loadQualityIssuesSummary() // 汇总接口不需要 selectedSourceId，获取所有数据源的汇总
   ])
   
   if (selectedSourceId.value) {
     await Promise.all([
       loadPreviewData(),
-      loadQualityScore(),
-      loadQualityIssuesSummary()
+      loadQualityScore()
     ])
   }
 }
@@ -897,7 +955,6 @@ watch(() => dataSources.value, (newSources) => {
     selectedSourceId.value = newSources[0].id
     loadPreviewData()
     loadQualityScore()
-    loadQualityIssuesSummary()
   }
 }, { deep: true })
 
@@ -906,7 +963,6 @@ watch(selectedSourceId, (newId) => {
   if (newId) {
     loadPreviewData()
     loadQualityScore()
-    loadQualityIssuesSummary()
   }
 })
 

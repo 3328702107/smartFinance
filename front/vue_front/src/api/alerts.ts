@@ -90,3 +90,4 @@ export function addProcessingRecord(alertId: string, data: { note: string; actio
   return request.post<ApiResponse<null>>(`/alerts/${alertId}/processing-record`, data)
 }
 
+

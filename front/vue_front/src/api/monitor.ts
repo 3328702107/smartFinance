@@ -9,12 +9,17 @@ export function getSystemStatus() {
 }
 
 /**
- * 获取风险趋势数据
+ * 获取风险趋势数据（事件趋势）
  * @param period - 时间周期: today | week | month
+ * @param hours - 仅在 period=today 时生效，默认 24，最大 72
  */
-export function getRiskTrend(period: string = 'today') {
-  return request.get<ApiResponse<RiskTrendData>>('/monitor/risk-trend', {
-    params: { period }
+export function getRiskTrend(period: string = 'today', hours?: number) {
+  const params: { period: string; hours?: number } = { period }
+  if (period === 'today' && hours !== undefined) {
+    params.hours = hours
+  }
+  return request.get<ApiResponse<RiskTrendData>>('/event-analysis/events/trend', {
+    params
   })
 }
 
@@ -52,5 +57,6 @@ export function getRiskEventDetail(eventId: string) {
 export function handleRiskEvent(eventId: string, data: { action: string; note?: string }) {
   return request.post<ApiResponse<null>>(`/monitor/risk-events/${eventId}/handle`, data)
 }
+
 
 
