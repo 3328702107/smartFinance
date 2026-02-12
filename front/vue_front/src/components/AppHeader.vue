@@ -33,13 +33,6 @@
           >
             数据采集
           </router-link>
-          <router-link 
-            to="/data-analysis" 
-            class="px-1 py-5 transition-smooth"
-            :class="currentRoute === '/data-analysis' ? 'text-primary font-medium border-b-2 border-primary' : 'text-light-dark hover:text-primary'"
-          >
-            事件分析
-          </router-link>
         </nav>
         
         <!-- 右侧用户信息 -->
@@ -91,45 +84,37 @@
     </div>
     
     <!-- 移动端导航菜单 -->
-    <div 
-      v-show="showMobileMenu"
-      class="md:hidden bg-white border-t border-gray-100"
-    >
-      <div class="px-4 py-3 space-y-3">
-        <router-link 
-          to="/monitor" 
-          class="block py-2 transition-smooth"
-          :class="currentRoute === '/monitor' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
-          @click="showMobileMenu = false"
-        >
-          实时监控
-        </router-link>
-        <router-link 
-          to="/risk-warning" 
-          class="block py-2 transition-smooth"
-          :class="currentRoute === '/risk-warning' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
-          @click="showMobileMenu = false"
-        >
-          风险告警
-        </router-link>
-        <router-link 
-          to="/data-collection" 
-          class="block py-2 transition-smooth"
-          :class="currentRoute === '/data-collection' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
-          @click="showMobileMenu = false"
-        >
-          数据采集
-        </router-link>
-        <router-link 
-          to="/data-analysis" 
-          class="block py-2 transition-smooth"
-          :class="currentRoute === '/data-analysis' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
-          @click="showMobileMenu = false"
-        >
-          事件分析
-        </router-link>
+      <div 
+        v-show="showMobileMenu"
+        class="md:hidden bg-white border-t border-gray-100"
+      >
+        <div class="px-4 py-3 space-y-3">
+          <router-link 
+            to="/monitor" 
+            class="block py-2 transition-smooth"
+            :class="currentRoute === '/monitor' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
+            @click="showMobileMenu = false"
+          >
+            实时监控
+          </router-link>
+          <router-link 
+            to="/risk-warning" 
+            class="block py-2 transition-smooth"
+            :class="currentRoute === '/risk-warning' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
+            @click="showMobileMenu = false"
+          >
+            风险告警
+          </router-link>
+          <router-link 
+            to="/data-collection" 
+            class="block py-2 transition-smooth"
+            :class="currentRoute === '/data-collection' ? 'text-primary font-medium' : 'text-light-dark hover:text-primary'"
+            @click="showMobileMenu = false"
+          >
+            数据采集
+          </router-link>
+        </div>
       </div>
-    </div>
   </header>
 </template>
 
@@ -140,7 +125,15 @@ import { getUserProfile, type UserProfile } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
-const currentRoute = computed(() => route.path)
+
+// 当前导航高亮：事件详情（/data-analysis）也归到“风险告警”
+const currentRoute = computed(() => {
+  const path = route.path
+  if (path === '/data-analysis') {
+    return '/risk-warning'
+  }
+  return path
+})
 
 const showUserMenu = ref(false)
 const showMobileMenu = ref(false)

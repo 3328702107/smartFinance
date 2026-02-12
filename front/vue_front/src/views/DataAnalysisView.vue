@@ -3,28 +3,72 @@
     <AppHeader />
     
     <main class="flex-grow container mx-auto px-4 py-6">
-      <!-- 事件标题和基本信息 -->
+      <!-- 加载状态 -->
+      <div v-if="loadingDetail" class="p-12 text-center">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-2 text-light-dark">加载事件详情中...</p>
+      </div>
+      
+      <!-- 空状态：只有在没有事件ID时才提示从列表进入 -->
+      <div v-else-if="!eventId" class="p-12 text-center">
+        <svg class="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="mt-4 text-light-dark">请从风险告警页面选择事件查看详情</p>
+      </div>
+      
+      <!-- 事件详情内容 -->
+      <template v-else>
+      <!-- 返回按钮和事件标题、基本信息 -->
       <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <button
+            @click="$router.push('/risk-warning')"
+            class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-lg text-sm text-light-dark hover:bg-gray-50 transition-smooth"
+          >
+            <i class="fas fa-arrow-left mr-2"></i>返回风险告警列表
+          </button>
+        </div>
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           <div>
             <div class="flex flex-wrap items-center gap-3 mb-2">
-              <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">疑似账户盗用事件分析</h2>
-              <span class="px-3 py-1 bg-danger/10 text-danger text-sm rounded-full font-medium">高风险</span>
-              <span class="px-3 py-1 bg-warning/10 text-warning text-sm rounded-full font-medium">待处理</span>
+              <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">
+                {{ eventDetail?.title || '事件分析' }}
+              </h2>
+              <span 
+                v-if="eventDetail?.levelName"
+                class="px-3 py-1 text-sm rounded-full font-medium"
+                :class="getLevelClass(eventDetail.level)"
+              >
+                {{ eventDetail.levelName }}
+              </span>
+              <span 
+                v-if="eventDetail?.statusName"
+                class="px-3 py-1 text-sm rounded-full font-medium"
+                :class="getStatusClass(eventDetail.status)"
+              >
+                {{ eventDetail.statusName }}
+              </span>
             </div>
-            <p class="text-light-dark mb-4">事件ID: <span class="font-medium">EVT-20230615-001</span> | 检测时间: <span class="font-medium">2023-06-15 10:24:35</span></p>
+            <p class="text-light-dark mb-4">
+              事件ID: <span class="font-medium">{{ eventDetail?.id || eventId || '-' }}</span> | 
+              检测时间: <span class="font-medium">{{ eventDetail?.detectTime || '-' }}</span>
+            </p>
             
             <div class="flex flex-wrap gap-3">
-              <button class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-smooth text-sm">
-                <i class="fas fa-edit mr-2"></i>编辑事件
-              </button>
-              <button class="inline-flex items-center px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-smooth text-sm">
+              <button
+                class="inline-flex items-center px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-smooth text-sm"
+                @click="markEventResolved"
+              >
                 <i class="fas fa-check mr-2"></i>标记为已处理
               </button>
-              <button class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
-                <i class="fas fa-history mr-2"></i>查看历史
-              </button>
-              <button class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+              <button
+                class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm"
+                @click="handleExportReport"
+              >
                 <i class="fas fa-download mr-2"></i>导出报告
               </button>
             </div>
@@ -34,27 +78,20 @@
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
             <div class="bg-white rounded-lg p-4 card-shadow">
               <div class="text-light-dark text-sm">风险评分</div>
-              <div class="text-2xl font-semibold text-danger mt-1">92<span class="text-sm font-normal text-light-dark ml-1">/100</span></div>
+              <div 
+                class="text-2xl font-semibold mt-1"
+                :class="getRiskScoreClass(eventDetail?.riskScore)"
+              >
+                {{ eventDetail?.riskScore || '-' }}<span v-if="eventDetail?.riskScore" class="text-sm font-normal text-light-dark ml-1">/100</span>
+              </div>
             </div>
             <div class="bg-white rounded-lg p-4 card-shadow">
               <div class="text-light-dark text-sm">关联账户</div>
-              <div class="text-2xl font-semibold mt-1">3</div>
+              <div class="text-2xl font-semibold mt-1">{{ eventDetail?.relatedAccounts ?? '-' }}</div>
             </div>
             <div class="bg-white rounded-lg p-4 card-shadow">
               <div class="text-light-dark text-sm">关联设备</div>
-              <div class="text-2xl font-semibold mt-1">2</div>
-            </div>
-            <div class="bg-white rounded-lg p-4 card-shadow">
-              <div class="text-light-dark text-sm">影响范围</div>
-              <div class="text-2xl font-semibold mt-1">中</div>
-            </div>
-            <div class="bg-white rounded-lg p-4 card-shadow">
-              <div class="text-light-dark text-sm">处理优先级</div>
-              <div class="text-2xl font-semibold text-danger mt-1">高</div>
-            </div>
-            <div class="bg-white rounded-lg p-4 card-shadow">
-              <div class="text-light-dark text-sm">持续时间</div>
-              <div class="text-2xl font-semibold mt-1">2h 15m</div>
+              <div class="text-2xl font-semibold mt-1">{{ eventDetail?.relatedDevices ?? '-' }}</div>
             </div>
           </div>
         </div>
@@ -187,7 +224,7 @@
                   class="absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center z-10"
                   :class="event.iconBgClass"
                 >
-                  <i :class="event.icon" class="text-white text-xs"></i>
+                  <i :class="event.iconClass" class="text-white text-xs"></i>
                 </div>
                 <div class="font-medium">{{ event.title }}</div>
                 <div class="text-sm text-light-dark mt-1">{{ event.description }}</div>
@@ -472,6 +509,7 @@
           </div>
         </div>
       </section>
+      </template>
     </main>
 
     <AppFooter />
@@ -480,12 +518,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import Toast from '@/components/Toast.vue'
 import { getModelStatus, qianfanRiskJudge } from '@/api/model'
 import type { QianfanRiskJudgeResult } from '@/api/model'
+import {
+  getEventAnalysisDetail,
+  getEventTimeline,
+  getEventRelatedAccounts,
+  getEventDevicesIps,
+  getEventTransactions,
+  getEventResponsibility,
+  getEventRiskAnalysis,
+  getEventProcessingRecords,
+  addEventProcessingRecord,
+  updateEventStatus,
+  exportEventReport
+} from '@/api/eventAnalysis'
+import type {
+  EventAnalysisDetail,
+  EventTimelineItem,
+  EventRelatedAccount,
+  EventIpAnalysisItem,
+  EventTransaction,
+  EventResponsibilityAnalysisItem,
+  EventRiskAnalysisData,
+  EventProcessingRecord
+} from '@/api/types'
+
+const route = useRoute()
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const toastMessage = ref('')
@@ -493,6 +557,15 @@ const toastType = ref<'success' | 'warning'>('success')
 const newProcessingNote = ref('')
 
 let refreshTimer: number | null = null
+
+// 事件 ID（从路由 query 中获取，优先使用 eventId，其次兼容 alertId）
+const eventId = computed(() => {
+  return (route.query.eventId as string | undefined) || (route.query.alertId as string | undefined)
+})
+
+// 事件详情数据
+const eventDetail = ref<EventAnalysisDetail | null>(null)
+const loadingDetail = ref(false)
 
 type QianfanServiceStatus = 'loading' | 'normal' | 'abnormal' | 'not_configured' | 'unknown'
 
@@ -549,125 +622,167 @@ const qianfanRiskLevelClass = computed(() => {
   }
 })
 
-const timelineEvents = ref([
-  { id: 1, title: '正常登录', description: '用户在常用设备（iPhone 13）上登录账户，地点：上海', time: '2023-06-14 20:15:32', icon: 'fas fa-user', iconBgClass: 'bg-primary' },
-  { id: 2, title: '用户登出', description: '用户主动登出账户', time: '2023-06-14 22:30:15', icon: 'fas fa-sign-out-alt', iconBgClass: 'bg-gray-400' },
-  { id: 3, title: '异常登录尝试', description: '新设备（Windows 10）尝试登录，IP地址：185.173.89.xxx，地点：俄罗斯莫斯科', time: '2023-06-15 10:20:18', icon: 'fas fa-user-secret', iconBgClass: 'bg-warning' },
-  { id: 4, title: '密码重置请求', description: '来自同一IP地址的密码重置请求，通过短信验证码验证', time: '2023-06-15 10:22:47', icon: 'fas fa-key', iconBgClass: 'bg-warning' },
-  { id: 5, title: '异常登录成功', description: '使用新密码在新设备上登录成功', time: '2023-06-15 10:24:12', icon: 'fas fa-check-circle', iconBgClass: 'bg-danger' },
-  { id: 6, title: '风险事件触发', description: '系统检测到异地异常登录行为，触发高风险告警', time: '2023-06-15 10:24:35', icon: 'fas fa-exclamation-triangle', iconBgClass: 'bg-danger' },
-  { id: 7, title: '异常资金转移', description: '登录后尝试向陌生账户转移资金 50,000元', time: '2023-06-15 10:30:22', icon: 'fas fa-exchange-alt', iconBgClass: 'bg-danger' }
-])
+// 接口数据：时间线
+const timelineEvents = ref<
+  Array<
+    EventTimelineItem & {
+      iconClass: string
+      iconBgClass: string
+      title: string
+    }
+  >
+>([])
 
-const relatedAccounts = ref([
-  {
-    id: 1,
-    name: '王小明',
-    avatar: 'https://picsum.photos/id/1012/200/200',
-    tag: '受害者',
-    tagClass: 'bg-primary/10 text-primary',
-    userId: 'USER-789456',
-    info: [
-      { label: '注册时间', value: '2022-03-15' },
-      { label: '账户等级', value: 'VIP会员' },
-      { label: '联系电话', value: '138****5678' },
-      { label: '邮箱', value: 'wang***@example.com' }
-    ]
-  },
-  {
-    id: 2,
-    name: '李**',
-    avatar: 'https://picsum.photos/id/1025/200/200',
-    tag: '收款账户',
-    tagClass: 'bg-danger/10 text-danger',
-    userId: 'USER-123456',
-    info: [
-      { label: '注册时间', value: '2023-05-20' },
-      { label: '账户状态', value: '已冻结', class: 'text-warning' },
-      { label: '交易次数', value: '12次' },
-      { label: '风险评分', value: '85分', class: 'text-danger' }
-    ]
-  },
-  {
-    id: 3,
-    name: '张**',
-    avatar: 'https://picsum.photos/id/1074/200/200',
-    tag: '可疑关联',
-    tagClass: 'bg-warning/10 text-warning',
-    userId: 'USER-654321',
-    info: [
-      { label: '注册时间', value: '2023-01-05' },
-      { label: '账户状态', value: '正常' },
-      { label: '与受害者关系', value: '无明显关系' },
-      { label: '风险评分', value: '62分', class: 'text-warning' }
-    ]
+// 接口数据：关联账户
+const relatedAccounts = ref<
+  Array<{
+    id: string
+    name: string
+    avatar: string
+    tag: string
+    tagClass: string
+    userId: string
+    info: Array<{ label: string; value: string; class?: string }>
+  }>
+>([])
+
+// 接口数据：设备和 IP
+const normalDevice = ref<Array<{ label: string; value: string }>>([])
+const abnormalDevice = ref<Array<{ label: string; value: string }>>([])
+const ipAnalysis = ref<
+  Array<{
+    address: string
+    riskLevel: string
+    riskClass: string
+    barClass: string
+    riskPercent: number
+    history: string
+  }>
+>([])
+
+// 接口数据：交易记录
+const transactions = ref<
+  Array<{
+    id: string
+    type: string
+    description: string
+    amount: string
+    status: string
+    statusClass: string
+    time: string
+    isAbnormal: boolean
+    warning?: string
+  }>
+>([])
+
+// 接口数据：责任追溯
+const responsibilityAnalysis = ref<
+  Array<{
+    title: string
+    description: string
+    icon: string
+    iconBgClass: string
+  }>
+>([])
+
+// 接口数据：风险评估和处理建议
+const riskAssessment = ref<
+  Array<{
+    label: string
+    percent: number
+    level: string
+    barClass: string
+    textClass: string
+  }>
+>([])
+
+const suggestions = ref<
+  Array<{
+    title: string
+    description: string
+  }>
+>([])
+
+// 接口数据：处理记录
+const processingRecords = ref<
+  Array<{
+    id: number
+    handler: string
+    avatar: string
+    time: string
+    content: string
+  }>
+>([])
+
+const saveProcessingNote = async () => {
+  const note = newProcessingNote.value.trim()
+  if (!note) return
+  if (!eventId.value) {
+    showToast('缺少事件ID，无法保存处理记录', 'warning')
+    return
   }
-])
 
-const normalDevice = ref([
-  { label: '设备名称', value: 'iPhone 13' },
-  { label: '操作系统', value: 'iOS 16.5' },
-  { label: '浏览器', value: 'Safari 16.5' },
-  { label: '常用IP', value: '101.89.xxx.xxx' },
-  { label: '常用地点', value: '中国 上海' }
-])
+  try {
+    const { data: res } = await addEventProcessingRecord(eventId.value, { note })
+    if (res.code === 200 && res.data) {
+      const r = res.data
+      processingRecords.value.unshift({
+        id: r.id,
+        handler: r.handlerName || r.handler || '当前用户',
+        avatar: r.handlerAvatar || 'https://picsum.photos/id/1005/200/200',
+        time: r.time,
+        content: r.note
+      })
+      newProcessingNote.value = ''
+      showToast('处理记录已保存')
+    }
+  } catch (error) {
+    console.error('保存处理记录失败:', error)
+    showToast('保存处理记录失败', 'warning')
+  }
+}
 
-const abnormalDevice = ref([
-  { label: '设备名称', value: '未知Windows设备' },
-  { label: '操作系统', value: 'Windows 10' },
-  { label: '浏览器', value: 'Chrome 112.0.5615.138' },
-  { label: '登录IP', value: '185.173.89.xxx' },
-  { label: '登录地点', value: '俄罗斯 莫斯科' }
-])
+// 标记事件为已处理
+const markEventResolved = async () => {
+  if (!eventId.value) {
+    showToast('缺少事件ID，无法更新状态', 'warning')
+    return
+  }
+  try {
+    const { data: res } = await updateEventStatus(eventId.value, 'resolved')
+    if (res.code === 200) {
+      if (eventDetail.value) {
+        eventDetail.value.status = 'resolved'
+        eventDetail.value.statusName = '已解决'
+      }
+      showToast('事件已标记为已处理')
+    }
+  } catch (error) {
+    console.error('更新事件状态失败:', error)
+    showToast('更新事件状态失败', 'warning')
+  }
+}
 
-const ipAnalysis = ref([
-  { address: '185.173.89.xxx', riskLevel: '高风险', riskClass: 'text-danger', barClass: 'bg-danger', riskPercent: 92, history: '历史记录: 3次可疑登录 | 归属地: 俄罗斯 莫斯科' },
-  { address: '101.89.xxx.xxx', riskLevel: '低风险', riskClass: 'text-success', barClass: 'bg-success', riskPercent: 15, history: '历史记录: 128次正常登录 | 归属地: 中国 上海' }
-])
-
-const transactions = ref([
-  { id: 'TX2023061501234', type: '资金转出', description: '向账户 李** 转账', amount: '-¥50,000.00', status: '处理中', statusClass: 'text-warning', time: '2023-06-15 10:30:22', isAbnormal: true, warning: '可疑交易 - 已拦截' },
-  { id: 'TX2023061008765', type: '资金转入', description: '来自账户 公司工资账户', amount: '+¥18,500.00', status: '成功', statusClass: 'text-success', time: '2023-06-10 09:30:00', isAbnormal: false },
-  { id: 'TX2023060805432', type: '消费', description: '在线购物 - 电子产品', amount: '-¥3,299.00', status: '成功', statusClass: 'text-success', time: '2023-06-08 15:42:18', isAbnormal: false },
-  { id: 'TX2023060509876', type: '资金转出', description: '向账户 王** 转账（亲属）', amount: '-¥10,000.00', status: '成功', statusClass: 'text-success', time: '2023-06-05 11:20:55', isAbnormal: false }
-])
-
-const responsibilityAnalysis = ref([
-  { title: '主要责任主体', description: '疑似黑客攻击，通过非法手段获取用户信息并进行登录操作', icon: 'fas fa-user', iconBgClass: 'bg-danger/10 text-danger' },
-  { title: '用户责任', description: '可能在其他平台使用相同密码，导致信息泄露；未开启二次验证', icon: 'fas fa-user-circle', iconBgClass: 'bg-warning/10 text-warning' },
-  { title: '系统防护', description: '异地登录检测及时，但密码重置流程可进一步加强安全验证', icon: 'fas fa-shield-alt', iconBgClass: 'bg-info/10 text-info' }
-])
-
-const riskAssessment = ref([
-  { label: '账户安全风险', percent: 95, level: '极高', barClass: 'bg-danger', textClass: 'text-danger' },
-  { label: '资金损失风险', percent: 85, level: '高', barClass: 'bg-danger', textClass: 'text-danger' },
-  { label: '信息泄露风险', percent: 65, level: '中', barClass: 'bg-warning', textClass: 'text-warning' }
-])
-
-const suggestions = ref([
-  { title: '立即冻结账户', description: '暂时冻结账户所有操作权限，防止进一步损失' },
-  { title: '联系用户核实', description: '通过注册手机和邮箱联系用户，确认是否为本人操作' },
-  { title: '强制密码重置', description: '引导用户进行安全的密码重置，并建议开启二次验证' },
-  { title: '调查收款账户', description: '对李**账户进行风险评估，必要时冻结并上报可疑交易' },
-  { title: '加强异常检测', description: '针对此类攻击模式优化风控模型，加强密码重置环节的安全验证' }
-])
-
-const processingRecords = ref([
-  { id: 1, handler: '系统自动处理', avatar: 'https://picsum.photos/id/1005/200/200', time: '2023-06-15 10:25:10', content: '检测到高风险事件，已自动拦截资金转移操作' },
-  { id: 2, handler: '张经理', avatar: 'https://picsum.photos/id/1010/200/200', time: '2023-06-15 10:35:42', content: '已冻结用户账户和可疑收款账户，正在联系用户核实情况' }
-])
-
-const saveProcessingNote = () => {
-  if (newProcessingNote.value.trim()) {
-    processingRecords.value.push({
-      id: processingRecords.value.length + 1,
-      handler: '当前用户',
-      avatar: 'https://picsum.photos/id/1005/200/200',
-      time: new Date().toLocaleString('zh-CN'),
-      content: newProcessingNote.value
-    })
-    newProcessingNote.value = ''
-    showToast('处理记录已保存')
+// 导出事件报告
+const handleExportReport = async () => {
+  if (!eventId.value) {
+    showToast('缺少事件ID，无法导出报告', 'warning')
+    return
+  }
+  try {
+    const response = await exportEventReport(eventId.value)
+    const blob = new Blob([response.data], { type: 'text/plain;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `event_${eventId.value}_report.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('导出事件报告失败:', error)
+    showToast('导出事件报告失败', 'warning')
   }
 }
 
@@ -736,9 +851,344 @@ const resetQianfanJudge = () => {
   qianfanResult.value = null
 }
 
+// ==== 加载事件分析相关数据（7.x 接口） ====
+
+// 7.1 事件详情
+const fetchEventDetail = async (id: string) => {
+  loadingDetail.value = true
+  try {
+    const { data: res } = await getEventAnalysisDetail(id)
+    if (res.code === 200 && res.data) {
+      eventDetail.value = res.data
+    }
+  } catch (error) {
+    console.error('获取事件详情失败:', error)
+    showToast('获取事件详情失败', 'warning')
+  } finally {
+    loadingDetail.value = false
+  }
+}
+
+// 7.2 时间线
+const fetchTimeline = async (id: string) => {
+  try {
+    const { data: res } = await getEventTimeline(id)
+    if (res.code === 200 && res.data) {
+      timelineEvents.value = (res.data.timeline || []).map((item: EventTimelineItem) => {
+        let iconClass = 'fas fa-info-circle'
+        let iconBgClass = 'bg-gray-400'
+        switch (item.type) {
+          case 'normal':
+            iconBgClass = 'bg-primary'
+            iconClass = 'fas fa-user'
+            break
+          case 'warning':
+            iconBgClass = 'bg-warning'
+            iconClass = 'fas fa-exclamation-triangle'
+            break
+          case 'danger':
+            iconBgClass = 'bg-danger'
+            iconClass = 'fas fa-exclamation-circle'
+            break
+          case 'info':
+          default:
+            iconBgClass = 'bg-gray-400'
+            iconClass = 'fas fa-info-circle'
+        }
+        return {
+          ...item,
+          title: item.typeName,
+          iconClass,
+          iconBgClass
+        }
+      })
+    }
+  } catch (error) {
+    console.error('获取事件时间线失败:', error)
+  }
+}
+
+// 7.4 关联账户
+const fetchRelatedAccounts = async (id: string) => {
+  try {
+    const { data: res } = await getEventRelatedAccounts(id)
+    if (res.code === 200 && res.data) {
+      relatedAccounts.value = (res.data.list || []).map((item: EventRelatedAccount, index: number) => {
+        const tagClassMap: Record<string, string> = {
+          victim: 'bg-primary/10 text-primary',
+          suspicious: 'bg-warning/10 text-warning'
+        }
+        const tagName = item.roleName || '关联账户'
+        const avatarId = 1005 + index
+        return {
+          id: item.id,
+          name: item.name,
+          avatar: `https://picsum.photos/id/${avatarId}/200/200`,
+          tag: tagName,
+          tagClass: tagClassMap[item.role] || 'bg-gray-100 text-light-dark',
+          userId: item.id,
+          info: [
+            { label: '注册时间', value: item.registerTime },
+            { label: '账户等级', value: item.level },
+            { label: '联系电话', value: item.phone },
+            { label: '邮箱', value: item.email }
+          ]
+        }
+      })
+    }
+  } catch (error) {
+    console.error('获取关联账户失败:', error)
+  }
+}
+
+// 7.5 设备和 IP
+const fetchDevicesAndIps = async (id: string) => {
+  try {
+    const { data: res } = await getEventDevicesIps(id)
+    if (res.code === 200 && res.data) {
+      const { commonDevices = [], abnormalDevices = [], ipAnalysis: ipList = [] } = res.data
+
+      normalDevice.value = commonDevices.map((d) => ({
+        label: d.name || '常用设备',
+        value: `${d.os || ''} ${d.browser || ''}`.trim() || '-'
+      }))
+
+      abnormalDevice.value = abnormalDevices.map((d) => ({
+        label: d.name || '异常设备',
+        value: `${d.os || ''} ${d.browser || ''}`.trim() || '-'
+      }))
+
+      ipAnalysis.value = (ipList as EventIpAnalysisItem[]).map((ip) => {
+        let riskClass = 'text-success'
+        let barClass = 'bg-success'
+        switch (ip.riskLevel) {
+          case 'high':
+            riskClass = 'text-danger'
+            barClass = 'bg-danger'
+            break
+          case 'medium':
+            riskClass = 'text-warning'
+            barClass = 'bg-warning'
+            break
+          case 'low':
+          default:
+            riskClass = 'text-success'
+            barClass = 'bg-success'
+        }
+        return {
+          address: ip.ip,
+          riskLevel: ip.riskLevel,
+          riskClass,
+          barClass,
+          riskPercent: ip.riskScore,
+          history: ip.description
+        }
+      })
+    }
+  } catch (error) {
+    console.error('获取设备和 IP 信息失败:', error)
+  }
+}
+
+// 7.6 交易记录
+const fetchTransactions = async (id: string) => {
+  try {
+    const { data: res } = await getEventTransactions(id, { page: 1, pageSize: 10 })
+    if (res.code === 200 && res.data) {
+      transactions.value = (res.data.list || []).map((t: EventTransaction) => {
+        const amountPrefix = t.amount >= 0 ? '+' : '-'
+        const amountAbs = Math.abs(t.amount).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+        const amountStr = `${amountPrefix}¥${amountAbs}`
+
+        let statusClass = 'text-light-dark'
+        if (t.status === 'success') statusClass = 'text-success'
+        else if (t.status === 'processing') statusClass = 'text-warning'
+
+        return {
+          id: t.id,
+          type: t.typeName,
+          description: `${t.fromAccountName} → ${t.toAccountName}`,
+          amount: amountStr,
+          status: t.statusName,
+          statusClass,
+          time: t.time,
+          isAbnormal: t.isAbnormal,
+          warning: t.isAbnormal ? t.abnormalReason : undefined
+        }
+      })
+    }
+  } catch (error) {
+    console.error('获取交易记录失败:', error)
+  }
+}
+
+// 7.7 责任追溯
+const fetchResponsibility = async (id: string) => {
+  try {
+    const { data: res } = await getEventResponsibility(id)
+    if (res.code === 200 && res.data) {
+      const analysis = res.data.analysis || []
+      responsibilityAnalysis.value = (analysis as EventResponsibilityAnalysisItem[]).map((item) => {
+        let icon = 'fas fa-user'
+        let iconBgClass = 'bg-info/10 text-info'
+        switch (item.type) {
+          case 'attacker':
+            icon = 'fas fa-user-secret'
+            iconBgClass = 'bg-danger/10 text-danger'
+            break
+          case 'user':
+            icon = 'fas fa-user-circle'
+            iconBgClass = 'bg-warning/10 text-warning'
+            break
+          case 'system':
+            icon = 'fas fa-shield-alt'
+            iconBgClass = 'bg-info/10 text-info'
+            break
+          default:
+            icon = 'fas fa-info-circle'
+            iconBgClass = 'bg-gray-100 text-light-dark'
+        }
+        return {
+          title: item.typeName,
+          description: item.description,
+          icon,
+          iconBgClass
+        }
+      })
+    }
+  } catch (error) {
+    console.error('获取责任追溯失败:', error)
+  }
+}
+
+// 7.8 风险分析与建议
+const fetchRiskAnalysis = async (id: string) => {
+  try {
+    const { data: res } = await getEventRiskAnalysis(id)
+    if (res.code === 200 && res.data) {
+      const data: EventRiskAnalysisData = res.data
+      // 风险评估文本填充到千帆默认查询
+      if (data.riskAssessment) {
+        qianfanQuery.value = data.riskAssessment
+      }
+
+      const scores = data.riskScores
+      riskAssessment.value = [
+        {
+          label: '账户安全风险',
+          percent: scores.accountSecurity,
+          level: scores.accountSecurityLevel,
+          barClass: 'bg-danger',
+          textClass: 'text-danger'
+        },
+        {
+          label: '资金损失风险',
+          percent: scores.fundLoss,
+          level: scores.fundLossLevel,
+          barClass: 'bg-danger',
+          textClass: 'text-danger'
+        },
+        {
+          label: '信息泄露风险',
+          percent: scores.infoLeak,
+          level: scores.infoLeakLevel,
+          barClass: 'bg-warning',
+          textClass: 'text-warning'
+        }
+      ]
+
+      suggestions.value = data.suggestions.map((s) => ({
+        title: `${s.order}. ${s.title}`,
+        description: s.description
+      }))
+    }
+  } catch (error) {
+    console.error('获取风险分析失败:', error)
+  }
+}
+
+// 7.9 处理记录
+const fetchProcessingRecords = async (id: string) => {
+  try {
+    const { data: res } = await getEventProcessingRecords(id)
+    if (res.code === 200 && res.data) {
+      processingRecords.value = (res.data.list || []).map((r: EventProcessingRecord, index: number) => ({
+        id: r.id,
+        handler: r.handlerName || r.handler,
+        avatar:
+          r.handlerAvatar ||
+          `https://picsum.photos/id/${1010 + index}/200/200`,
+        time: r.time,
+        content: r.note
+      }))
+    }
+  } catch (error) {
+    console.error('获取处理记录失败:', error)
+  }
+}
+
+// 工具函数
+const getLevelClass = (level: string) => {
+  switch (level) {
+    case 'high': return 'bg-danger/10 text-danger'
+    case 'medium': return 'bg-warning/10 text-warning'
+    case 'low': return 'bg-info/10 text-info'
+    default: return 'bg-gray-100 text-gray-600'
+  }
+}
+
+const getStatusClass = (status: string) => {
+  switch (status) {
+    case 'pending': return 'bg-warning/10 text-warning'
+    case 'processing': return 'bg-primary/10 text-primary'
+    case 'resolved': return 'bg-success/10 text-success'
+    case 'ignored': return 'bg-gray-100 text-light-dark'
+    default: return 'bg-gray-100 text-light-dark'
+  }
+}
+
+const getRiskScoreClass = (score?: number) => {
+  if (!score) return 'text-gray-400'
+  if (score >= 80) return 'text-danger'
+  if (score >= 50) return 'text-warning'
+  return 'text-success'
+}
+
+// 加载整个事件分析模块数据
+const loadEventAnalysisAll = async (id: string) => {
+  await Promise.all([
+    fetchEventDetail(id),
+    fetchTimeline(id),
+    fetchRelatedAccounts(id),
+    fetchDevicesAndIps(id),
+    fetchTransactions(id),
+    fetchResponsibility(id),
+    fetchRiskAnalysis(id),
+    fetchProcessingRecords(id)
+  ])
+}
+
+// 监听路由变化
+watch(
+  () => route.query.alertId,
+  (newId) => {
+    if (newId && typeof newId === 'string') {
+      void loadEventAnalysisAll(newId)
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   void loadQianfanServiceStatus()
-  // 设置自动刷新
+  // 如果有事件ID，加载全部分析数据
+  if (eventId.value) {
+    void loadEventAnalysisAll(eventId.value)
+  }
+  // 设置自动刷新（仅提示数据已更新，实际可按需重新拉取）
   refreshTimer = window.setInterval(() => {
     showToast('数据已更新')
   }, 30000)

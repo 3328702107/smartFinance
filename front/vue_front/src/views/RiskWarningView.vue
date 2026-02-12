@@ -289,6 +289,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import Toast from '@/components/Toast.vue'
@@ -302,9 +303,13 @@ import {
   batchOperateAlerts 
 } from '@/api/alerts'
 
+const router = useRouter()
+
 // 告警项接口
 interface AlertListItem {
   id: string
+  // 后端返回的事件ID，用于跳转事件分析
+  eventId?: string
   eventType: string
   eventTypeName: string
   level: string
@@ -520,10 +525,11 @@ const handleQuickResolve = async (alert: AlertListItem) => {
 }
 
 const openAlertDetails = (alert: AlertListItem) => {
-  selectedAlert.value = alert
-  alertDetail.value = null
-  showAlertModal.value = true
-  fetchAlertDetail(alert.id)
+  // 直接导航到事件分析页面，传递告警ID和事件ID（如果有）作为查询参数
+  router.push({
+    path: '/data-analysis',
+    query: { alertId: alert.id, eventId: alert.eventId }
+  })
 }
 
 const handleIgnore = async () => {

@@ -234,6 +234,8 @@ def list_alerts():
         }
         return {
             "id": a.alert_id,
+            # 关联的风险事件 ID，供前端跳转事件分析使用
+            "eventId": a.event_id,
             "eventType": "account",
             "eventTypeName": a.alert_type,
             "level": level_code,
@@ -387,6 +389,8 @@ def alert_detail(alert_id):
 
     data = {
         "id": alert.alert_id,
+        # 事件 ID，供前端事件分析模块使用
+        "eventId": alert.event_id,
         "eventType": "account",
         "eventTypeName": alert.alert_type,
         "level": level_code,

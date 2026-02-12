@@ -12,7 +12,7 @@ from models.user import User
 from utils.response import api_response, paginated_response
 
 
-bp = Blueprint("event_analysis", __name__, url_prefix="/event-analysis")
+bp = Blueprint("event_analysis", __name__, url_prefix="/api/event-analysis")
 
 
 def _dt(v):
@@ -46,6 +46,32 @@ def _event_type_code(event_type: Optional[str]) -> str:
         "批量注册": "batch_registration",
     }
     return mapping.get(event_type or "", "account_theft")
+
+
+def _get_current_operator() -> str:
+    """从 Authorization token 中获取当前操作人用户名，失败则返回 \"系统\"。
+
+    与 alerts 模块中的实现保持一致，避免前端必须传 operator。
+    """
+    from flask import current_app
+    import jwt
+
+    token = request.headers.get("Authorization", "")
+    if token.lower().startswith("bearer "):
+        token = token.split(" ", 1)[1]
+    if not token:
+        return "系统"
+
+    try:
+        from models.user import User
+
+        payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+        user = User.query.get(payload.get("sub")) if payload.get("sub") else None
+        if not user:
+            return "系统"
+        return getattr(user, "username", None) or getattr(user, "name", None) or user.user_id
+    except Exception:
+        return "系统"
 
 
 @bp.get("/events/trend")
@@ -158,6 +184,7 @@ def event_basic(event_id):
     """7.1 获取事件详情，返回结构与文档示例对齐。"""
     event = RiskEvent.query.get_or_404(event_id)
 
+    print("获取事件详情，接口为：events/<event_id>，事件ID：", event_id)
     # 关联账户和设备数量
     related_accounts = RelatedUser.query.filter_by(event_id=event.event_id).count()
     related_devices = 1 if event.device_id else 0
@@ -602,7 +629,8 @@ def add_event_processing_record(event_id):
 
     note = data.get("note")
     action = data.get("action") or "标记已处理"
-    operator = data.get("operator") or "系统"
+    # 优先使用前端传入的 operator，否则从 token 中解析，最后兜底为“系统”
+    operator = data.get("operator") or _get_current_operator() or "系统"
 
     if not note:
         return api_response(code=400, message="note required")
@@ -650,7 +678,13 @@ def update_event_status(event_id):
     if new_status not in ["待处理", "处理中", "已解决", "已忽略"]:
         return api_response(code=400, message="invalid status")
 
+    # 更新事件本身状态
     event.status = new_status
+
+    # 同步更新所有关联告警的状态，保证列表和事件视图一致
+    if new_status in ["待处理", "处理中", "已解决", "已忽略"]:
+        Alert.query.filter_by(event_id=event.event_id).update({"status": new_status})
+
     db.session.commit()
 
     return api_response(message="状态更新成功")
