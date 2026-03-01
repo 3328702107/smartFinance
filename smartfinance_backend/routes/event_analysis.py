@@ -48,11 +48,8 @@ def _event_type_code(event_type: Optional[str]) -> str:
     return mapping.get(event_type or "", "account_theft")
 
 
-def _get_current_operator() -> str:
-    """从 Authorization token 中获取当前操作人用户名，失败则返回 \"系统\"。
-
-    与 alerts 模块中的实现保持一致，避免前端必须传 operator。
-    """
+def _get_current_user():
+    """从 Authorization token 获取当前用户对象，失败返回 None。"""
     from flask import current_app
     import jwt
 
@@ -60,18 +57,40 @@ def _get_current_operator() -> str:
     if token.lower().startswith("bearer "):
         token = token.split(" ", 1)[1]
     if not token:
-        return "系统"
-
+        return None
     try:
-        from models.user import User
-
         payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
-        user = User.query.get(payload.get("sub")) if payload.get("sub") else None
-        if not user:
-            return "系统"
-        return getattr(user, "username", None) or getattr(user, "name", None) or user.user_id
+        return User.query.get(payload.get("sub")) if payload.get("sub") else None
     except Exception:
+        return None
+
+
+def _get_current_operator() -> str:
+    """从 Authorization token 中获取当前操作人用户名，失败则返回 \"系统\"。"""
+    user = _get_current_user()
+    if not user:
         return "系统"
+    return getattr(user, "username", None) or getattr(user, "name", None) or user.user_id
+
+
+def _avatar_url(avatar: Optional[str]) -> Optional[str]:
+    """将相对路径头像转为可访问的完整 URL。"""
+    if not avatar:
+        return None
+    if avatar.startswith("http://") or avatar.startswith("https://"):
+        return avatar
+    base = request.host_url.rstrip("/") if request else ""
+    return f"{base}{avatar}" if base else avatar
+
+
+def _user_avatar_by_operator(operator: Optional[str]) -> Optional[str]:
+    """根据处理人名称（username 或 name）查找用户头像。"""
+    if not operator:
+        return None
+    user = User.query.filter(
+        db.or_(User.username == operator, User.name == operator)
+    ).first()
+    return _avatar_url(user.avatar) if user and user.avatar else None
 
 
 @bp.get("/events/trend")
@@ -179,12 +198,28 @@ def event_trend():
     )
 
 
+def _event_display_status(event: RiskEvent) -> tuple:
+    """
+    事件详情展示用状态：有关联告警时以告警状态为准，保证与告警列表一致。
+    返回 (status_code, status_name)，如 ("pending", "待处理")。
+    """
+    alerts = list(event.alerts)
+    if not alerts:
+        # 无关联告警，用事件自身状态
+        return _status_code(event.status), event.status or "待处理"
+    # 有关联告警：存在任一未解决则展示未解决
+    for a in alerts:
+        if a.status in ("待处理", "处理中"):
+            return _status_code(a.status), a.status
+    # 全部已解决/已忽略，取第一个的展示（或事件自身）
+    return _status_code(event.status), event.status or "已解决"
+
+
 @bp.get("/events/<event_id>")
 def event_basic(event_id):
     """7.1 获取事件详情，返回结构与文档示例对齐。"""
     event = RiskEvent.query.get_or_404(event_id)
 
-    print("获取事件详情，接口为：events/<event_id>，事件ID：", event_id)
     # 关联账户和设备数量
     related_accounts = RelatedUser.query.filter_by(event_id=event.event_id).count()
     related_devices = 1 if event.device_id else 0
@@ -209,6 +244,9 @@ def event_basic(event_id):
     else:
         duration = None
 
+    # 展示状态：有关联告警时以告警为准，避免事件显示已解决而告警仍未解决
+    status_code, status_name = _event_display_status(event)
+
     data = {
         "id": event.event_id,
         "title": f"疑似{event.event_type}事件分析",
@@ -216,8 +254,8 @@ def event_basic(event_id):
         "typeName": event.event_type,
         "level": level_code,
         "levelName": f"{event.risk_level}风险" if event.risk_level else None,
-        "status": _status_code(event.status),
-        "statusName": event.status,
+        "status": status_code,
+        "statusName": status_name,
         "detectTime": _dt(event.detection_time),
         "riskScore": event.score,
         "relatedAccounts": int(related_accounts),
@@ -602,13 +640,14 @@ def event_processing_records(event_id):
 
     def _record_to_dict(r: HandlingRecord):
         r_type = "system" if r.operator == "系统" else "manual"
+        avatar = _user_avatar_by_operator(r.operator)
         return {
             "id": r.record_id,
             "type": r_type,
             "typeName": "系统自动处理" if r_type == "system" else "人工处理",
             "handler": r.operator,
             "handlerName": r.operator,
-            "handlerAvatar": None,
+            "handlerAvatar": avatar,
             "time": _dt(r.action_time),
             "note": r.comment,
         }
@@ -646,13 +685,15 @@ def add_event_processing_record(event_id):
     db.session.commit()
 
     r_type = "system" if operator == "系统" else "manual"
+    current_user = _get_current_user()
+    handler_avatar = _avatar_url(current_user.avatar) if current_user and getattr(current_user, "avatar", None) else _user_avatar_by_operator(operator)
     record_data = {
         "id": rec.record_id,
         "type": r_type,
         "typeName": "系统自动处理" if r_type == "system" else "人工处理",
         "handler": operator,
         "handlerName": operator,
-        "handlerAvatar": None,
+        "handlerAvatar": handler_avatar,
         "time": _dt(rec.action_time),
         "note": note,
     }
@@ -681,13 +722,23 @@ def update_event_status(event_id):
     # 更新事件本身状态
     event.status = new_status
 
-    # 同步更新所有关联告警的状态，保证列表和事件视图一致
-    if new_status in ["待处理", "处理中", "已解决", "已忽略"]:
-        Alert.query.filter_by(event_id=event.event_id).update({"status": new_status})
+    # 同步更新所有关联告警的状态，保证风险告警列表与事件详情一致
+    synced_count = 0
+    for alert in event.alerts:
+        alert.status = new_status
+        synced_count += 1
+    # 兜底：按 event_id 再扫一遍，防止关系未加载时漏掉
+    if synced_count == 0:
+        for alert in Alert.query.filter_by(event_id=event.event_id).all():
+            alert.status = new_status
+            synced_count += 1
 
     db.session.commit()
 
-    return api_response(message="状态更新成功")
+    return api_response(
+        message="状态更新成功",
+        data={"syncedAlerts": synced_count} if synced_count else None,
+    )
 
 
 @bp.put("/events/<event_id>")
