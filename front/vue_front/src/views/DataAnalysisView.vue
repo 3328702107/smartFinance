@@ -273,7 +273,10 @@
               </div>
             </div>
             
-            <button class="w-full mt-6 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+            <button 
+              class="w-full mt-6 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm"
+              @click="showAccountsModal = true"
+            >
               查看所有关联账户 <i class="fas fa-angle-right ml-1"></i>
             </button>
           </div>
@@ -381,7 +384,10 @@
               </div>
             </div>
             
-            <button class="w-full mt-6 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm">
+            <button 
+              class="w-full mt-6 py-2 border border-gray-200 rounded-lg text-light-dark hover:bg-gray-50 transition-smooth text-sm"
+              @click="openTransactionsModal"
+            >
               查看完整交易记录 <i class="fas fa-angle-right ml-1"></i>
             </button>
           </div>
@@ -493,6 +499,139 @@
     </main>
 
     <AppFooter />
+
+    <!-- 所有关联账户弹窗 -->
+    <div 
+      v-if="showAccountsModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      @click.self="showAccountsModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+          <h3 class="text-lg font-semibold">所有关联账户</h3>
+          <button 
+            class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
+            @click="showAccountsModal = false"
+          >
+            <i class="fas fa-times text-gray-500"></i>
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+          <div 
+            v-for="(account, index) in relatedAccounts" 
+            :key="account.id"
+            :class="index !== relatedAccounts.length - 1 ? 'mb-6 pb-6 border-b border-gray-100' : ''"
+          >
+            <div class="flex items-start">
+              <img :src="account.avatar" alt="用户头像" class="w-12 h-12 rounded-full object-cover mr-4">
+              <div>
+                <div class="flex items-center">
+                  <h4 class="font-medium">{{ account.name }}</h4>
+                  <span 
+                    class="ml-2 px-2 py-0.5 text-xs rounded-full"
+                    :class="account.tagClass"
+                  >
+                    {{ account.tag }}
+                  </span>
+                </div>
+                <p class="text-sm text-light-dark mt-1">{{ account.userId }}</p>
+                <div class="grid grid-cols-2 gap-2 mt-3 text-sm">
+                  <div v-for="info in account.info" :key="info.label">
+                    <span class="text-light-dark">{{ info.label }}:</span>
+                    <span class="block" :class="info.class">{{ info.value }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p v-if="relatedAccounts.length === 0" class="text-center text-light-dark py-8">暂无关联账户</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 完整交易记录弹窗（分页） -->
+    <div 
+      v-if="showTransactionsModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      @click.self="showTransactionsModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+          <h3 class="text-lg font-semibold">完整交易记录</h3>
+          <button 
+            class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
+            @click="showTransactionsModal = false"
+          >
+            <i class="fas fa-times text-gray-500"></i>
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+          <div v-if="transactionsModalLoading" class="py-12 text-center text-light-dark">
+            <i class="fas fa-spinner fa-spin text-2xl"></i>
+            <p class="mt-2">加载中...</p>
+          </div>
+          <template v-else>
+            <div class="space-y-4">
+              <div 
+                v-for="tx in transactionsFullList" 
+                :key="tx.id"
+                class="p-4 rounded-lg border"
+                :class="tx.isAbnormal ? 'border-danger/20 bg-danger/5' : 'border-gray-200'"
+              >
+                <div class="flex justify-between items-start">
+                  <div>
+                    <div class="font-medium">{{ tx.type }}</div>
+                    <div class="text-sm text-light-dark mt-1">{{ tx.description }}</div>
+                  </div>
+                  <span 
+                    class="font-medium"
+                    :class="tx.amount.startsWith('+') ? 'text-success' : 'text-danger'"
+                  >
+                    {{ tx.amount }}
+                  </span>
+                </div>
+                <div class="flex flex-wrap justify-between gap-2 mt-3 text-xs text-light-dark">
+                  <span>交易ID: {{ tx.id }}</span>
+                  <span>状态: <span :class="tx.statusClass">{{ tx.status }}</span></span>
+                  <span>时间: {{ tx.time }}</span>
+                </div>
+                <div 
+                  v-if="tx.warning"
+                  class="mt-2 text-xs bg-danger/10 text-danger px-2 py-1 rounded inline-block"
+                >
+                  {{ tx.warning }}
+                </div>
+              </div>
+            </div>
+            <p v-if="transactionsFullList.length === 0 && !transactionsModalLoading" class="text-center text-light-dark py-8">暂无交易记录</p>
+            <div 
+              v-if="transactionsFullTotal > 0" 
+              class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4"
+            >
+              <span class="text-sm text-light-dark">共 {{ transactionsFullTotal }} 条</span>
+              <div class="flex gap-2">
+                <button 
+                  class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="transactionsFullPage <= 1"
+                  @click="fetchTransactionsPage(transactionsFullPage - 1)"
+                >
+                  上一页
+                </button>
+                <span class="px-3 py-1.5 text-sm text-light-dark">{{ transactionsFullPage }} / {{ transactionsFullTotalPages }}</span>
+                <button 
+                  class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="transactionsFullPage >= transactionsFullTotalPages"
+                  @click="fetchTransactionsPage(transactionsFullPage + 1)"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
     <Toast ref="toastRef" :message="toastMessage" :type="toastType" />
   </div>
 </template>
@@ -692,6 +831,30 @@ const processingRecords = ref<
     content: string
   }>
 >([])
+
+// 弹窗：所有关联账户 / 完整交易记录
+const showAccountsModal = ref(false)
+const showTransactionsModal = ref(false)
+const transactionsFullList = ref<
+  Array<{
+    id: string
+    type: string
+    description: string
+    amount: string
+    status: string
+    statusClass: string
+    time: string
+    isAbnormal: boolean
+    warning?: string
+  }>
+>([])
+const transactionsFullTotal = ref(0)
+const transactionsFullPage = ref(1)
+const transactionsFullPageSize = 10
+const transactionsFullTotalPages = computed(() =>
+  Math.max(1, Math.ceil(transactionsFullTotal.value / transactionsFullPageSize))
+)
+const transactionsModalLoading = ref(false)
 
 const saveProcessingNote = async () => {
   const note = newProcessingNote.value.trim()
@@ -1013,6 +1176,55 @@ const fetchTransactions = async (id: string) => {
     }
   } catch (error) {
     console.error('获取交易记录失败:', error)
+  }
+}
+
+// 完整交易记录弹窗：打开时加载第一页
+const openTransactionsModal = () => {
+  showTransactionsModal.value = true
+  fetchTransactionsPage(1)
+}
+
+// 完整交易记录分页请求
+const fetchTransactionsPage = async (page: number) => {
+  const id = eventId.value
+  if (!id) return
+  transactionsModalLoading.value = true
+  try {
+    const { data: res } = await getEventTransactions(id, {
+      page,
+      pageSize: transactionsFullPageSize
+    })
+    if (res.code === 200 && res.data) {
+      transactionsFullList.value = (res.data.list || []).map((t: EventTransaction) => {
+        const amountPrefix = t.amount >= 0 ? '+' : '-'
+        const amountAbs = Math.abs(t.amount).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+        const amountStr = `${amountPrefix}¥${amountAbs}`
+        let statusClass = 'text-light-dark'
+        if (t.status === 'success') statusClass = 'text-success'
+        else if (t.status === 'processing') statusClass = 'text-warning'
+        return {
+          id: t.id,
+          type: t.typeName,
+          description: `${t.fromAccountName} → ${t.toAccountName}`,
+          amount: amountStr,
+          status: t.statusName,
+          statusClass,
+          time: t.time,
+          isAbnormal: t.isAbnormal,
+          warning: t.isAbnormal ? t.abnormalReason : undefined
+        }
+      })
+      transactionsFullTotal.value = res.data.total ?? 0
+      transactionsFullPage.value = page
+    }
+  } catch (error) {
+    console.error('获取完整交易记录失败:', error)
+  } finally {
+    transactionsModalLoading.value = false
   }
 }
 
