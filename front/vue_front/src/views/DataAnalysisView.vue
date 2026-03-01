@@ -425,17 +425,16 @@
         <!-- 风险分析和建议 -->
         <div class="bg-white rounded-xl card-shadow overflow-hidden lg:col-span-3">
           <div class="p-6 border-b border-gray-200">
-            <h3 class="text-lg font-semibold">风险分析与处理建议</h3>
-            <p class="text-sm text-light-dark mt-1">基于事件分析的风险评估和处理方案</p>
+            <h3 class="text-lg font-semibold">风险分析</h3>
+            <p class="text-sm text-light-dark mt-1">基于事件分析的风险评估</p>
           </div>
           
           <div class="p-6">
             <div class="mb-6">
               <h4 class="font-medium mb-3">风险评估</h4>
               <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <p class="text-sm mb-4">该事件属于典型的账户盗用案例，攻击者通过未知手段获取了用户的基本信息，并成功重置密码登录账户。从攻击路径来看，攻击者可能利用了用户在其他平台的信息泄露，使用相同的用户名和密码尝试登录。事件风险等级高，已造成潜在的资金损失风险。</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <p v-if="riskAssessmentText" class="text-sm mb-4 text-gray-700">{{ riskAssessmentText }}</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div v-for="risk in riskAssessment" :key="risk.label">
                     <div class="text-light-dark text-xs mb-1">{{ risk.label }}</div>
                     <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
@@ -451,25 +450,6 @@
               </div>
             </div>
             
-            <div class="mb-6">
-              <h4 class="font-medium mb-3">处理建议</h4>
-              <div class="space-y-3">
-                <div 
-                  v-for="(suggestion, index) in suggestions" 
-                  :key="index"
-                  class="flex items-start"
-                >
-                  <div class="bg-primary/10 text-primary p-1 rounded-full mt-0.5 mr-3 flex-shrink-0">
-                    <span class="text-sm font-medium">{{ index + 1 }}</span>
-                  </div>
-                  <div>
-                    <div class="font-medium">{{ suggestion.title }}</div>
-                    <div class="text-sm text-light-dark mt-1">{{ suggestion.description }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
             <div>
               <h4 class="font-medium mb-3">处理记录</h4>
               <div class="space-y-4 max-h-[150px] overflow-y-auto pr-2">
@@ -478,7 +458,7 @@
                   :key="record.id"
                   class="flex items-start"
                 >
-                  <img :src="record.avatar" alt="处理人头像" class="w-8 h-8 rounded-full object-cover mr-3 flex-shrink-0">
+                  <img :src="getRecordAvatar(record)" alt="处理人头像" class="w-8 h-8 rounded-full object-cover mr-3 flex-shrink-0">
                   <div>
                     <div class="flex items-center">
                       <span class="font-medium text-sm">{{ record.handler }}</span>
@@ -525,6 +505,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import Toast from '@/components/Toast.vue'
 import { getModelStatus, qianfanRiskJudge } from '@/api/model'
 import type { QianfanRiskJudgeResult } from '@/api/model'
+import { getUserProfile } from '@/api/user'
 import {
   getEventAnalysisDetail,
   getEventTimeline,
@@ -555,6 +536,9 @@ const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'warning'>('success')
 const newProcessingNote = ref('')
+// 当前登录用户显示名与头像，用于添加处理记录时作为处理人
+const currentUserDisplayName = ref('当前用户')
+const currentUserAvatar = ref('')
 
 let refreshTimer: number | null = null
 
@@ -695,13 +679,8 @@ const riskAssessment = ref<
     textClass: string
   }>
 >([])
-
-const suggestions = ref<
-  Array<{
-    title: string
-    description: string
-  }>
->([])
+// 接口返回的风险评估文案（7.8 risk-analysis）
+const riskAssessmentText = ref('')
 
 // 接口数据：处理记录
 const processingRecords = ref<
@@ -723,13 +702,16 @@ const saveProcessingNote = async () => {
   }
 
   try {
-    const { data: res } = await addEventProcessingRecord(eventId.value, { note })
+    const { data: res } = await addEventProcessingRecord(eventId.value, {
+      note,
+      operator: currentUserDisplayName.value
+    })
     if (res.code === 200 && res.data) {
       const r = res.data
       processingRecords.value.unshift({
         id: r.id,
         handler: r.handlerName || r.handler || '当前用户',
-        avatar: r.handlerAvatar || 'https://picsum.photos/id/1005/200/200',
+        avatar: r.handlerAvatar || currentUserAvatar.value,
         time: r.time,
         content: r.note
       })
@@ -742,7 +724,7 @@ const saveProcessingNote = async () => {
   }
 }
 
-// 标记事件为已处理
+// 标记事件为已处理（后端会同步更新该事件关联的所有告警状态）
 const markEventResolved = async () => {
   if (!eventId.value) {
     showToast('缺少事件ID，无法更新状态', 'warning')
@@ -755,7 +737,11 @@ const markEventResolved = async () => {
         eventDetail.value.status = 'resolved'
         eventDetail.value.statusName = '已解决'
       }
-      showToast('事件已标记为已处理')
+      const n = (res.data as { syncedAlerts?: number } | null)?.syncedAlerts
+      const msg = n != null && n > 0
+        ? `事件与 ${n} 条关联告警已标记为已解决，可刷新告警列表查看`
+        : '事件已标记为已解决'
+      showToast(msg)
     }
   } catch (error) {
     console.error('更新事件状态失败:', error)
@@ -763,7 +749,7 @@ const markEventResolved = async () => {
   }
 }
 
-// 导出事件报告
+// 导出事件报告（触发浏览器下载到本地）
 const handleExportReport = async () => {
   if (!eventId.value) {
     showToast('缺少事件ID，无法导出报告', 'warning')
@@ -771,15 +757,20 @@ const handleExportReport = async () => {
   }
   try {
     const response = await exportEventReport(eventId.value)
-    const blob = new Blob([response.data], { type: 'text/plain;charset=utf-8' })
+    const blob = response.data instanceof Blob ? response.data : new Blob([response.data], { type: 'text/plain;charset=utf-8' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `event_${eventId.value}_report.txt`
+    a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
-    a.remove()
-    window.URL.revokeObjectURL(url)
+    // 延迟释放，确保浏览器已开始下载
+    setTimeout(() => {
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    }, 200)
+    showToast('报告已开始下载')
   } catch (error) {
     console.error('导出事件报告失败:', error)
     showToast('导出事件报告失败', 'warning')
@@ -1066,10 +1057,12 @@ const fetchResponsibility = async (id: string) => {
 
 // 7.8 风险分析与建议
 const fetchRiskAnalysis = async (id: string) => {
+  riskAssessmentText.value = ''
   try {
     const { data: res } = await getEventRiskAnalysis(id)
     if (res.code === 200 && res.data) {
       const data: EventRiskAnalysisData = res.data
+      riskAssessmentText.value = data.riskAssessment || ''
       // 风险评估文本填充到千帆默认查询
       if (data.riskAssessment) {
         qianfanQuery.value = data.riskAssessment
@@ -1099,11 +1092,6 @@ const fetchRiskAnalysis = async (id: string) => {
           textClass: 'text-warning'
         }
       ]
-
-      suggestions.value = data.suggestions.map((s) => ({
-        title: `${s.order}. ${s.title}`,
-        description: s.description
-      }))
     }
   } catch (error) {
     console.error('获取风险分析失败:', error)
@@ -1115,15 +1103,19 @@ const fetchProcessingRecords = async (id: string) => {
   try {
     const { data: res } = await getEventProcessingRecords(id)
     if (res.code === 200 && res.data) {
-      processingRecords.value = (res.data.list || []).map((r: EventProcessingRecord, index: number) => ({
-        id: r.id,
-        handler: r.handlerName || r.handler,
-        avatar:
+      processingRecords.value = (res.data.list || []).map((r: EventProcessingRecord) => {
+        const handlerName = r.handlerName || r.handler
+        const avatar =
           r.handlerAvatar ||
-          `https://picsum.photos/id/${1010 + index}/200/200`,
-        time: r.time,
-        content: r.note
-      }))
+          (handlerName === currentUserDisplayName.value ? currentUserAvatar.value : '')
+        return {
+          id: r.id,
+          handler: handlerName,
+          avatar,
+          time: r.time,
+          content: r.note
+        }
+      })
     }
   } catch (error) {
     console.error('获取处理记录失败:', error)
@@ -1157,6 +1149,13 @@ const getRiskScoreClass = (score?: number) => {
   return 'text-success'
 }
 
+/** 处理记录头像：优先使用接口返回或当前用户头像，否则用首字母生成（非随机） */
+function getRecordAvatar(record: { avatar?: string; handler?: string }): string {
+  if (record.avatar) return record.avatar
+  const name = (record.handler || '').trim() || '?'
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e0e7eb&color=374151&size=64`
+}
+
 // 加载整个事件分析模块数据
 const loadEventAnalysisAll = async (id: string) => {
   await Promise.all([
@@ -1171,12 +1170,12 @@ const loadEventAnalysisAll = async (id: string) => {
   ])
 }
 
-// 监听路由变化
+// 只根据 eventId 加载，不监听 alertId，避免发出 alert 请求
 watch(
-  () => route.query.alertId,
-  (newId) => {
-    if (newId && typeof newId === 'string') {
-      void loadEventAnalysisAll(newId)
+  () => eventId.value,
+  (id) => {
+    if (id && typeof id === 'string') {
+      void loadEventAnalysisAll(id)
     }
   },
   { immediate: true }
@@ -1184,10 +1183,17 @@ watch(
 
 onMounted(() => {
   void loadQianfanServiceStatus()
-  // 如果有事件ID，加载全部分析数据
-  if (eventId.value) {
-    void loadEventAnalysisAll(eventId.value)
-  }
+  // 获取当前登录用户，用于处理记录显示为当前用户而非“系统”
+  getUserProfile().then(({ data: res }) => {
+    if (res.code === 200 && res.data) {
+      currentUserDisplayName.value = res.data.name || res.data.username || '当前用户'
+      const av = res.data.avatar
+      currentUserAvatar.value = av
+        ? (av.startsWith('http') ? av : `${import.meta.env.VITE_APP_API_BASE || 'http://localhost:5000'}${av}`)
+        : ''
+    }
+  }).catch(() => {})
+  // 数据由 watch(eventId) 统一加载，此处不再重复调用
   // 设置自动刷新（仅提示数据已更新，实际可按需重新拉取）
   refreshTimer = window.setInterval(() => {
     showToast('数据已更新')

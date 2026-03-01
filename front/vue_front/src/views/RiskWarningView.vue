@@ -298,7 +298,6 @@ import AlertDetailsModal from '@/components/AlertDetailsModal.vue'
 // API 导入
 import { 
   getAlertList, 
-  getAlertDetail, 
   updateAlertStatus as apiUpdateAlertStatus, 
   batchOperateAlerts 
 } from '@/api/alerts'
@@ -400,20 +399,6 @@ const fetchAlertList = async () => {
     showToast('获取告警列表失败', 'warning')
   } finally {
     loading.value = false
-  }
-}
-
-const fetchAlertDetail = async (alertId: string) => {
-  loadingDetail.value = true
-  try {
-    const { data: res } = await getAlertDetail(alertId)
-    if (res.code === 200 && res.data) {
-      alertDetail.value = res.data
-    }
-  } catch (error) {
-    console.error('获取告警详情失败:', error)
-  } finally {
-    loadingDetail.value = false
   }
 }
 
@@ -525,10 +510,12 @@ const handleQuickResolve = async (alert: AlertListItem) => {
 }
 
 const openAlertDetails = (alert: AlertListItem) => {
-  // 直接导航到事件分析页面，传递告警ID和事件ID（如果有）作为查询参数
+  // 只跳转事件分析页并传递事件ID，仅发 event 请求，不发 alert 请求
+  const id = alert.eventId || alert.id
+  if (!id) return
   router.push({
     path: '/data-analysis',
-    query: { alertId: alert.id, eventId: alert.eventId }
+    query: { eventId: id }
   })
 }
 

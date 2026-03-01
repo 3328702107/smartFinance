@@ -32,6 +32,11 @@ request.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     const { data } = response
     
+    // 文件下载等 blob 响应直接放行，不校验 code
+    if (data instanceof Blob) {
+      return response
+    }
+    
     // 业务状态码判断
     if (data.code === 200) {
       return response
